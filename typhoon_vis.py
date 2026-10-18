@@ -1,5 +1,6 @@
 import io
 import json
+import re
 import xml.etree.ElementTree as ET
 import zipfile
 import folium
@@ -17,15 +18,38 @@ m = folium.Map(
 )
 
 # 2. 建立圖層 (FeatureGroups)
-fg_ncdr = folium.FeatureGroup(name="1. 各國預測路徑 (NCDR)", show=True)
+fg_cwa_wsp = folium.FeatureGroup(
+    name="3. CWA 暴風圈侵襲機率 (W-C0034-003)", show=False
+)
 fg_cwa_route = folium.FeatureGroup(
     name="2. CWA 警報與暴風圈 (W-C0034-002)", show=True
 )
-fg_cwa_wsp = folium.FeatureGroup(
-    name="3. CWA 暴風圈侵襲機率 (W-C0034-003)", show=True
-)
+fg_ncdr = folium.FeatureGroup(name="1. 各國預測路徑 (NCDR)", show=True)
 
 ns = {"kml": "http://www.opengis.net/kml/2.2"}
+
+
+# 輔助函式：解析經緯度字串 (例如 "21.5,120.8" 或 "21.5N, 120.8E")
+def parse_lat_lon(pos_str):
+    if not pos_str:
+        return None
+    cleaned = (
+        pos_str.replace("N", "")
+        .replace("E", "")
+        .replace("°", "")
+        .replace("N", "")
+        .replace("E", "")
+        .strip()
+    )
+    parts = [p.strip() for p in cleaned.replace(",", " ").split() if p.strip()]
+    if len(parts) >= 2:
+        try:
+            lat = float(parts[0])
+            lon = float(parts[1])
+            return lat, lon
+        except ValueError:
+            return None
+    return None
 
 
 # 輔助函式：下載並解析 KMZ / KML
@@ -47,10 +71,22 @@ def fetch_kml_from_kmz(url):
         return None
 
 
-# 輔助函式：將 KML 幾何圖形加入圖層 (顯示經緯度座標)
-def parse_and_add_kml_to_group(root_elem, target_group, default_color="red"):
+# 輔助函式：將 KML 幾何圖形加入圖層 (順序：面 -> 線 -> 點)
+def parse_and_add_kml_to_group(
+    root_elem,
+    target_group,
+    default_color="red",
+    fill_opacity=0.05,
+    line_weight=2,
+    line_opacity=0.5,
+):
     if root_elem is None:
         return
+
+    poly_list = []
+    line_list = []
+    point_list = []
+
     for pm in root_elem.findall(".//kml:Placemark", ns):
         name_elem = pm.find("kml:name", ns)
         name = (
@@ -65,45 +101,6 @@ def parse_and_add_kml_to_group(root_elem, target_group, default_color="red"):
             else ""
         )
 
-        # 線條
-        line_coords = pm.find(".//kml:LineString/kml:coordinates", ns)
-        if line_coords is not None and line_coords.text:
-            path = [
-                [float(c.split(",")[1]), float(c.split(",")[0])]
-                for c in line_coords.text.strip().split()
-                if len(c.split(",")) >= 2
-            ]
-            if path:
-                folium.PolyLine(
-                    locations=path,
-                    color=default_color,
-                    weight=3,
-                    opacity=0.8,
-                    tooltip=name,
-                    popup=folium.Popup(f"<b>{name}</b><br>{desc}", max_width=300),
-                ).add_to(target_group)
-
-        # 點位（顯示經緯度座標）
-        point_coords = pm.find(".//kml:Point/kml:coordinates", ns)
-        if point_coords is not None and point_coords.text:
-            parts = point_coords.text.strip().split(",")
-            if len(parts) >= 2:
-                lon, lat = float(parts[0]), float(parts[1])
-                pos_str = f"中心位置：北緯 {lat:.1f}°, 東經 {lon:.1f}°"
-                folium.CircleMarker(
-                    location=[lat, lon],
-                    radius=5,
-                    color=default_color,
-                    fill=True,
-                    fill_color=default_color,
-                    fill_opacity=0.8,
-                    tooltip=f"{name} ({pos_str})",
-                    popup=folium.Popup(
-                        f"<b>{name}</b><br><b>{pos_str}</b><br>{desc}",
-                        max_width=300,
-                    ),
-                ).add_to(target_group)
-
         # 面域 (Polygon)
         poly_coords = pm.find(".//kml:Polygon//kml:coordinates", ns)
         if poly_coords is not None and poly_coords.text:
@@ -113,17 +110,67 @@ def parse_and_add_kml_to_group(root_elem, target_group, default_color="red"):
                 if len(c.split(",")) >= 2
             ]
             if poly_path:
-                folium.Polygon(
-                    locations=poly_path,
-                    color=default_color,
-                    fill=True,
-                    fill_color=default_color,
-                    fill_opacity=0.25,
-                    tooltip=name,
-                    popup=folium.Popup(
-                        f"<b>{name}</b><br>{desc}", max_width=300
-                    ),
-                ).add_to(target_group)
+                poly_list.append((poly_path, name, desc))
+
+        # 線條
+        line_coords = pm.find(".//kml:LineString/kml:coordinates", ns)
+        if line_coords is not None and line_coords.text:
+            path = [
+                [float(c.split(",")[1]), float(c.split(",")[0])]
+                for c in line_coords.text.strip().split()
+                if len(c.split(",")) >= 2
+            ]
+            if path:
+                line_list.append((path, name, desc))
+
+        # 點位
+        point_coords = pm.find(".//kml:Point/kml:coordinates", ns)
+        if point_coords is not None and point_coords.text:
+            parts = point_coords.text.strip().split(",")
+            if len(parts) >= 2:
+                lon, lat = float(parts[0]), float(parts[1])
+                point_list.append((lat, lon, name, desc))
+
+    # 1. 面域 (極低透明度)
+    for poly_path, name, desc in poly_list:
+        folium.Polygon(
+            locations=poly_path,
+            color=default_color,
+            weight=1,
+            opacity=0.3,
+            fill=True,
+            fill_color=default_color,
+            fill_opacity=fill_opacity,
+            tooltip=name,
+            popup=folium.Popup(f"<b>{name}</b><br>{desc}", max_width=300),
+        ).add_to(target_group)
+
+    # 2. 線條
+    for path, name, desc in line_list:
+        folium.PolyLine(
+            locations=path,
+            color=default_color,
+            weight=line_weight,
+            opacity=line_opacity,
+            tooltip=name,
+            popup=folium.Popup(f"<b>{name}</b><br>{desc}", max_width=300),
+        ).add_to(target_group)
+
+    # 3. 中心點位
+    for lat, lon, name, desc in point_list:
+        pos_str = f"中心位置：北緯 {lat:.1f}°, 東經 {lon:.1f}°"
+        folium.CircleMarker(
+            location=[lat, lon],
+            radius=5,
+            color=default_color,
+            fill=True,
+            fill_color=default_color,
+            fill_opacity=0.9,
+            tooltip=f"{name} ({pos_str})",
+            popup=folium.Popup(
+                f"<b>{name}</b><br><b>{pos_str}</b><br>{desc}", max_width=300
+            ),
+        ).add_to(target_group)
 
 
 # 輔助函式：取得 CWA OpenData 的 ProductURL 並獲取實體 XML 資料
@@ -241,7 +288,7 @@ if ncdr_root is not None:
                     locations=path,
                     color=color,
                     weight=4,
-                    opacity=0.85,
+                    opacity=1.0,
                     tooltip=f"<b>NCDR: {name}</b>",
                 ).add_to(fg_ncdr)
 
@@ -253,10 +300,11 @@ if ncdr_root is not None:
                 pos_str = f"北緯 {lat:.1f}°, 東經 {lon:.1f}°"
                 folium.CircleMarker(
                     location=[lat, lon],
-                    radius=4,
+                    radius=5,
                     color=color,
                     fill=True,
-                    fill_opacity=0.8,
+                    fill_color=color,
+                    fill_opacity=1.0,
                     tooltip=f"NCDR: {name} ({pos_str})",
                     popup=folium.Popup(
                         f"<b>NCDR: {name}</b><br><b>位置：{pos_str}</b>",
@@ -269,19 +317,32 @@ if ncdr_root is not None:
 print("正在讀取 CWA 颱風警報與暴風圈 (W-C0034-002)...")
 cwa_002_url = f"https://opendata.cwa.gov.tw/fileapi/v1/opendataapi/W-C0034-002?Authorization={CWA_API_KEY}&downloadType=WEB&format=KMZ"
 cwa_002_root = fetch_kml_from_kmz(cwa_002_url)
-parse_and_add_kml_to_group(cwa_002_root, fg_cwa_route, default_color="darkred")
+parse_and_add_kml_to_group(
+    cwa_002_root,
+    fg_cwa_route,
+    default_color="darkred",
+    fill_opacity=0.08,
+    line_weight=2,
+    line_opacity=0.6,
+)
 
 print("正在讀取 CWA 暴風圈侵襲機率 (W-C0034-003)...")
 cwa_003_url = f"https://opendata.cwa.gov.tw/fileapi/v1/opendataapi/W-C0034-003?Authorization={CWA_API_KEY}&downloadType=WEB&format=KMZ"
 parse_and_add_kml_to_group(
-    fetch_kml_from_kmz(cwa_003_url), fg_cwa_wsp, default_color="purple"
+    fetch_kml_from_kmz(cwa_003_url),
+    fg_cwa_wsp,
+    default_color="purple",
+    fill_opacity=0.03,
+    line_weight=1,
+    line_opacity=0.3,
 )
 
 
-# --- [分頁 1] CWA 颱風警報與結構化颱風數據解析 (含位置座標) ---
+# --- [分頁 1] CWA 颱風警報與結構化颱風數據解析 (含地圖位置標記) ---
 print("正在讀取 CWA 警報與颱風中心位置 (W-C0034-001)...")
 cwa_001_url = f"https://opendata.cwa.gov.tw/api/v1/rest/datastore/W-C0034-001?Authorization={CWA_API_KEY}"
 alert_html = ""
+center_lat_lon = None
 
 try:
     res = requests.get(cwa_001_url, timeout=15)
@@ -321,20 +382,34 @@ try:
                         if scales:
                             t_data["scale"] = scales[0].get("value", "")
 
-            # 格式化中心位置
-            pos_formatted = t_data.get("position", "未知")
-            if "," in pos_formatted:
-                plat, plon = pos_formatted.split(",")
-                pos_formatted = f"北緯 {plat}°，東經 {plon}°"
+            # 解析經緯度座標並在地圖標註
+            pos_raw = t_data.get("position", "")
+            center_lat_lon = parse_lat_lon(pos_raw)
+
+            pos_formatted = "未知"
+            if center_lat_lon:
+                pos_formatted = f"北緯 {center_lat_lon[0]:.1f}°，東經 {center_lat_lon[1]:.1f}°"
+                # 在地圖上加上顯眼的颱風中心 Marker
+                folium.Marker(
+                    location=[center_lat_lon[0], center_lat_lon[1]],
+                    popup=folium.Popup(
+                        f"<b>{t_data.get('cwa_name', '颱風')} 最新中心位置</b><br>{pos_formatted}<br>中心氣壓：{t_data.get('pressure')} hPa",
+                        max_width=300,
+                    ),
+                    tooltip=f"🌀 {t_data.get('cwa_name', '颱風')} 中心 ({pos_formatted})",
+                    icon=folium.Icon(
+                        color="red", icon="info-sign", prefix="glyphicon"
+                    ),
+                ).add_to(fg_cwa_route)
 
             # 組裝結構化颱風數據卡
             typhoon_card_html = ""
-            if t_data.get("position"):
+            if pos_raw:
                 typhoon_card_html = f"""
-                <div style="background:#f8f9fa; border:1px solid #cce5ff; padding:8px; border-radius:6px; margin:6px 0; font-size:12px; color:#004085;">
-                    <b>颱風名稱</b>：{t_data.get('cwa_name')} ({t_data.get('eng_name')})<br>
+                <div style="background:#fff3cd; border:1px solid #ffeeba; padding:8px; border-radius:6px; margin:6px 0; font-size:12px; color:#856404;">
+                    <b>颱風名稱</b>：<b>{t_data.get('cwa_name')} ({t_data.get('eng_name')})</b><br>
                     <b>颱風強度</b>：{t_data.get('scale')}<br>
-                    <b style="color:#d9534f;">中心位置</b>：<b>{pos_formatted}</b><br>
+                    <b style="color:#d9534f; font-size:13px;">🌀 最新中心位置</b>：<b style="color:#d9534f; font-size:13px;">{pos_formatted}</b><br>
                     <b>中心氣壓</b>：{t_data.get('pressure')} hPa<br>
                     <b>最大風速</b>：{t_data.get('max_winds')} m/s | <b>瞬間陣風</b>：{t_data.get('gust')} m/s<br>
                     <b>7級風暴風半徑</b>：{t_data.get('r15')} km
@@ -375,7 +450,18 @@ if not alert_html:
             if pt_coords is not None and pt_coords.text and not latest_coords_str:
                 p_parts = pt_coords.text.strip().split(",")
                 if len(p_parts) >= 2:
-                    latest_coords_str = f"北緯 {float(p_parts[1]):.1f}°，東經 {float(p_parts[0]):.1f}°"
+                    flat, flon = float(p_parts[1]), float(p_parts[0])
+                    latest_coords_str = f"北緯 {flat:.1f}°，東經 {flon:.1f}°"
+                    # 在地圖標註備援中心點
+                    folium.Marker(
+                        location=[flat, flon],
+                        popup=folium.Popup(
+                            f"<b>最新颱風中心位置 (CWA KMZ)</b><br>{latest_coords_str}",
+                            max_width=300,
+                        ),
+                        tooltip=f"🌀 颱風中心 ({latest_coords_str})",
+                        icon=folium.Icon(color="red", icon="flag"),
+                    ).add_to(fg_cwa_route)
 
             if desc_elem is not None and desc_elem.text:
                 pm_name = (
@@ -396,7 +482,8 @@ if not alert_html:
             if pt_coords is not None and pt_coords.text and not latest_coords_str:
                 p_parts = pt_coords.text.strip().split(",")
                 if len(p_parts) >= 2:
-                    latest_coords_str = f"北緯 {float(p_parts[1]):.1f}°，東經 {float(p_parts[0]):.1f}°"
+                    flat, flon = float(p_parts[1]), float(p_parts[0])
+                    latest_coords_str = f"北緯 {flat:.1f}°，東經 {flon:.1f}°"
 
             if desc_elem is not None and desc_elem.text:
                 pm_name = (
@@ -409,7 +496,8 @@ if not alert_html:
                 )
 
     pos_banner = (
-        f"<div style='background:#e9ecef; padding:6px; border-radius:4px; margin-bottom:6px;'><b style='color:#d9534f;'>最新中心位置：</b><b>{latest_coords_str}</b></div>"
+        f"<div style='background:#e9ecef; padding:8px; border-radius:6px; margin-bottom:8px; border-left:4px solid #d9534f;'>"
+        f"<b style='color:#d9534f; font-size:13px;'>🌀 最新颱風中心位置：</b><br><b style='font-size:14px; color:#333;'>{latest_coords_str}</b></div>"
         if latest_coords_str
         else ""
     )
@@ -446,7 +534,7 @@ rain_html = parse_cwa_forecast_xml(
 
 # --- 介面面板 ---
 tab_panel_html = f"""
-<div style="position: fixed; bottom: 30px; right: 30px; width: 360px; height: 340px; 
+<div style="position: fixed; bottom: 30px; right: 30px; width: 360px; height: 360px; 
      background-color: white; border:2px solid #337ab7; z-index:9999; font-size:13px;
      padding: 10px; border-radius: 8px; box-shadow: 0 0 10px rgba(0,0,0,0.3); opacity: 0.95;
      display: flex; flex-direction: column;">
@@ -499,14 +587,13 @@ legend_html = """
 """
 m.get_root().html.add_child(folium.Element(legend_html))
 
-fg_ncdr.add_to(m)
-fg_cwa_route.add_to(m)
+# 加入圖層
 fg_cwa_wsp.add_to(m)
+fg_cwa_route.add_to(m)
+fg_ncdr.add_to(m)
 
 folium.LayerControl(position="topright", collapsed=False).add_to(m)
 
 output_file = "index.html"
 m.save(output_file)
-print(
-    f"地圖已成功更新，並完成颱風中心位置座標提取顯示：{output_file}"
-)
+print(f"地圖已成功更新，颱風中心位置標記與顯示完成：{output_file}")
