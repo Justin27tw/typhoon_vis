@@ -1,0 +1,35 @@
+name: Auto Update Typhoon Map
+
+on:
+  schedule:
+    - cron: '0 */3 * * *'  # 每 3 小時排程執行一次
+  workflow_dispatch:       # 允許在 GitHub 頁面手動點擊執行
+
+jobs:
+  update-map:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+
+      - name: Install dependencies
+        run: |
+          pip install -r requirements.txt
+
+      - name: Run script
+        run: python typhoon_vis.py
+
+      - name: Commit and Push index.html
+        run: |
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+          git add index.html
+          git commit -m "Auto update typhoon map [skip ci]" || exit 0
+          git push
