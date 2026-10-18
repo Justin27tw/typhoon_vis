@@ -2,8 +2,8 @@ name: Auto Update Typhoon Map
 
 on:
   schedule:
-    - cron: '0 */3 * * *'  # 每 3 小時排程執行一次
-  workflow_dispatch:       # 允許在 GitHub 頁面手動點擊執行
+    - cron: '*/5 * * * *'  # 每 5 分鐘排程執行一次
+  workflow_dispatch:       # 允許手動點擊執行
 
 jobs:
   update-map:
