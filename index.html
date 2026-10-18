@@ -1,0 +1,1268 @@
+<!DOCTYPE html>
+<html>
+<head>
+    
+    <meta http-equiv="content-type" content="text/html; charset=UTF-8" />
+    <script src="https://cdn.jsdelivr.net/npm/leaflet@1.9.3/dist/leaflet.js"></script>
+    <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.2.2/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Leaflet.awesome-markers/2.0.2/leaflet.awesome-markers.js"></script>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/leaflet@1.9.3/dist/leaflet.css"/>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.2.2/dist/css/bootstrap.min.css"/>
+    <link rel="stylesheet" href="https://netdna.bootstrapcdn.com/bootstrap/3.0.0/css/bootstrap-glyphicons.css"/>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.2.0/css/all.min.css"/>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/Leaflet.awesome-markers/2.0.2/leaflet.awesome-markers.css"/>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/python-visualization/folium/folium/templates/leaflet.awesome.rotate.min.css"/>
+    
+            <meta name="viewport" content="width=device-width,
+                initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+            <style>
+                #map_195c8d8fffa786ee2ed7156da06583c8 {
+                    position: relative;
+                    width: 100.0%;
+                    height: 100.0%;
+                    left: 0.0%;
+                    top: 0.0%;
+                }
+                .leaflet-container { font-size: 1rem; }
+            </style>
+
+            <style>html, body {
+                width: 100%;
+                height: 100%;
+                margin: 0;
+                padding: 0;
+            }
+            </style>
+
+            <style>#map {
+                position:absolute;
+                top:0;
+                bottom:0;
+                right:0;
+                left:0;
+                }
+            </style>
+
+            <script>
+                L_NO_TOUCH = false;
+                L_DISABLE_3D = false;
+            </script>
+
+        
+</head>
+<body>
+    
+    
+<div style="position: fixed; bottom: 30px; left: 30px; width: 160px; height: 180px; 
+     background-color: white; border:2px solid gray; z-index:9999; font-size:14px;
+     padding: 10px; border-radius: 5px; opacity: 0.9;">
+  <b>各國颱風預測圖例</b><br>
+  <i class="fa fa-minus" style="color:red"></i> 台灣 (CWA)<br>
+  <i class="fa fa-minus" style="color:blue"></i> 日本 (JMA)<br>
+  <i class="fa fa-minus" style="color:green"></i> 美國 (JTWC)<br>
+  <i class="fa fa-minus" style="color:purple"></i> 韓國 (KMA)<br>
+  <i class="fa fa-minus" style="color:orange"></i> 中國 (CMA)<br>
+  <i class="fa fa-minus" style="color:cadetblue"></i> 其他/歷史位置
+</div>
+    
+            <div class="folium-map" id="map_195c8d8fffa786ee2ed7156da06583c8" ></div>
+        
+</body>
+<script>
+    
+    
+            var map_195c8d8fffa786ee2ed7156da06583c8 = L.map(
+                "map_195c8d8fffa786ee2ed7156da06583c8",
+                {
+                    center: [23.8, 121.0],
+                    crs: L.CRS.EPSG3857,
+                    ...{
+  "zoom": 6,
+  "zoomControl": true,
+  "preferCanvas": false,
+}
+
+                }
+            );
+
+            
+
+        
+    
+            var tile_layer_366c309c7a1df8ba57447083332e66e6 = L.tileLayer(
+                "https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}",
+                {
+  "minZoom": 0,
+  "maxZoom": 18,
+  "maxNativeZoom": 18,
+  "noWrap": false,
+  "attribution": "Esri World Street Map",
+  "subdomains": "abc",
+  "detectRetina": false,
+  "tms": false,
+  "opacity": 1,
+}
+
+            );
+        
+    
+            tile_layer_366c309c7a1df8ba57447083332e66e6.addTo(map_195c8d8fffa786ee2ed7156da06583c8);
+        
+    
+            var circle_marker_3d3dd578510748fb1732425e2aaa58ab = L.circleMarker(
+                [13.1000003814697, 142.300003051758],
+                {"bubblingMouseEvents": true, "color": "green", "dashArray": null, "dashOffset": null, "fill": true, "fillColor": "green", "fillOpacity": 0.8, "fillRule": "evenodd", "lineCap": "round", "lineJoin": "round", "opacity": 1.0, "radius": 4, "stroke": true, "weight": 3}
+            ).addTo(map_195c8d8fffa786ee2ed7156da06583c8);
+        
+    
+        var popup_8cacd9118cc5289d31733580f59b0e47 = L.popup({
+  "maxWidth": 300,
+});
+
+        
+            
+                var html_899dd99b12e7e75eeec01abab1a2ac97 = $(`<div id="html_899dd99b12e7e75eeec01abab1a2ac97" style="width: 100.0%; height: 100.0%;"><b>JTWC發佈時間:10/18 14</b><br>JTWC發佈時間:10/18 14</div>`)[0];
+                popup_8cacd9118cc5289d31733580f59b0e47.setContent(html_899dd99b12e7e75eeec01abab1a2ac97);
+            
+        
+
+        circle_marker_3d3dd578510748fb1732425e2aaa58ab.bindPopup(popup_8cacd9118cc5289d31733580f59b0e47)
+        ;
+
+        
+    
+    
+            circle_marker_3d3dd578510748fb1732425e2aaa58ab.bindTooltip(
+                `<div>
+                     JTWC發佈時間:10/18 14
+                 </div>`,
+                {
+  "sticky": true,
+}
+            );
+        
+    
+            var circle_marker_d7e2e01c349c86455a18a0b99b1a8d09 = L.circleMarker(
+                [14.6999998092651, 138.300003051758],
+                {"bubblingMouseEvents": true, "color": "cadetblue", "dashArray": null, "dashOffset": null, "fill": true, "fillColor": "cadetblue", "fillOpacity": 0.8, "fillRule": "evenodd", "lineCap": "round", "lineJoin": "round", "opacity": 1.0, "radius": 4, "stroke": true, "weight": 3}
+            ).addTo(map_195c8d8fffa786ee2ed7156da06583c8);
+        
+    
+        var popup_e73ec76dde3cc5308048d42da35bb34e = L.popup({
+  "maxWidth": 300,
+});
+
+        
+            
+                var html_890460754f46d40838bd09050cbfc927 = $(`<div id="html_890460754f46d40838bd09050cbfc927" style="width: 100.0%; height: 100.0%;"><b>颱風路徑</b><br>無詳細說明</div>`)[0];
+                popup_e73ec76dde3cc5308048d42da35bb34e.setContent(html_890460754f46d40838bd09050cbfc927);
+            
+        
+
+        circle_marker_d7e2e01c349c86455a18a0b99b1a8d09.bindPopup(popup_e73ec76dde3cc5308048d42da35bb34e)
+        ;
+
+        
+    
+    
+            circle_marker_d7e2e01c349c86455a18a0b99b1a8d09.bindTooltip(
+                `<div>
+                     颱風路徑
+                 </div>`,
+                {
+  "sticky": true,
+}
+            );
+        
+    
+            var circle_marker_c6e847bb425d533f5ee5d77713c13c8d = L.circleMarker(
+                [16.7000007629395, 133.899993896484],
+                {"bubblingMouseEvents": true, "color": "cadetblue", "dashArray": null, "dashOffset": null, "fill": true, "fillColor": "cadetblue", "fillOpacity": 0.8, "fillRule": "evenodd", "lineCap": "round", "lineJoin": "round", "opacity": 1.0, "radius": 4, "stroke": true, "weight": 3}
+            ).addTo(map_195c8d8fffa786ee2ed7156da06583c8);
+        
+    
+        var popup_d237a9b5420b811952b9663bd1e9e6ec = L.popup({
+  "maxWidth": 300,
+});
+
+        
+            
+                var html_165b2643adc96680915b496358e3bcd7 = $(`<div id="html_165b2643adc96680915b496358e3bcd7" style="width: 100.0%; height: 100.0%;"><b>颱風路徑</b><br>無詳細說明</div>`)[0];
+                popup_d237a9b5420b811952b9663bd1e9e6ec.setContent(html_165b2643adc96680915b496358e3bcd7);
+            
+        
+
+        circle_marker_c6e847bb425d533f5ee5d77713c13c8d.bindPopup(popup_d237a9b5420b811952b9663bd1e9e6ec)
+        ;
+
+        
+    
+    
+            circle_marker_c6e847bb425d533f5ee5d77713c13c8d.bindTooltip(
+                `<div>
+                     颱風路徑
+                 </div>`,
+                {
+  "sticky": true,
+}
+            );
+        
+    
+            var circle_marker_f852c429eaa5d6c9fefd13e1b5901c2d = L.circleMarker(
+                [18.8999996185303, 129.199996948242],
+                {"bubblingMouseEvents": true, "color": "cadetblue", "dashArray": null, "dashOffset": null, "fill": true, "fillColor": "cadetblue", "fillOpacity": 0.8, "fillRule": "evenodd", "lineCap": "round", "lineJoin": "round", "opacity": 1.0, "radius": 4, "stroke": true, "weight": 3}
+            ).addTo(map_195c8d8fffa786ee2ed7156da06583c8);
+        
+    
+        var popup_2e58497e1bc9796cd1c1181d02a2d0d5 = L.popup({
+  "maxWidth": 300,
+});
+
+        
+            
+                var html_806de3fb291ea56731cc3ca66555e7a5 = $(`<div id="html_806de3fb291ea56731cc3ca66555e7a5" style="width: 100.0%; height: 100.0%;"><b>颱風路徑</b><br>無詳細說明</div>`)[0];
+                popup_2e58497e1bc9796cd1c1181d02a2d0d5.setContent(html_806de3fb291ea56731cc3ca66555e7a5);
+            
+        
+
+        circle_marker_f852c429eaa5d6c9fefd13e1b5901c2d.bindPopup(popup_2e58497e1bc9796cd1c1181d02a2d0d5)
+        ;
+
+        
+    
+    
+            circle_marker_f852c429eaa5d6c9fefd13e1b5901c2d.bindTooltip(
+                `<div>
+                     颱風路徑
+                 </div>`,
+                {
+  "sticky": true,
+}
+            );
+        
+    
+            var circle_marker_cc783fe0257f4f6201bc5fc53ca736d7 = L.circleMarker(
+                [20.3999996185303, 126.300003051758],
+                {"bubblingMouseEvents": true, "color": "cadetblue", "dashArray": null, "dashOffset": null, "fill": true, "fillColor": "cadetblue", "fillOpacity": 0.8, "fillRule": "evenodd", "lineCap": "round", "lineJoin": "round", "opacity": 1.0, "radius": 4, "stroke": true, "weight": 3}
+            ).addTo(map_195c8d8fffa786ee2ed7156da06583c8);
+        
+    
+        var popup_d06de46bb767ce4db28bb6446857b46b = L.popup({
+  "maxWidth": 300,
+});
+
+        
+            
+                var html_fbfcfd5f4658298711a381f2e1bf2851 = $(`<div id="html_fbfcfd5f4658298711a381f2e1bf2851" style="width: 100.0%; height: 100.0%;"><b>颱風路徑</b><br>無詳細說明</div>`)[0];
+                popup_d06de46bb767ce4db28bb6446857b46b.setContent(html_fbfcfd5f4658298711a381f2e1bf2851);
+            
+        
+
+        circle_marker_cc783fe0257f4f6201bc5fc53ca736d7.bindPopup(popup_d06de46bb767ce4db28bb6446857b46b)
+        ;
+
+        
+    
+    
+            circle_marker_cc783fe0257f4f6201bc5fc53ca736d7.bindTooltip(
+                `<div>
+                     颱風路徑
+                 </div>`,
+                {
+  "sticky": true,
+}
+            );
+        
+    
+            var circle_marker_0998d4b46d9b5907f5bfddcbab5193e8 = L.circleMarker(
+                [22.2000007629395, 123.5],
+                {"bubblingMouseEvents": true, "color": "cadetblue", "dashArray": null, "dashOffset": null, "fill": true, "fillColor": "cadetblue", "fillOpacity": 0.8, "fillRule": "evenodd", "lineCap": "round", "lineJoin": "round", "opacity": 1.0, "radius": 4, "stroke": true, "weight": 3}
+            ).addTo(map_195c8d8fffa786ee2ed7156da06583c8);
+        
+    
+        var popup_d3048d06054b543725fc96b1c68881b3 = L.popup({
+  "maxWidth": 300,
+});
+
+        
+            
+                var html_1de7fdfcf995a8dd7786b97c80e48546 = $(`<div id="html_1de7fdfcf995a8dd7786b97c80e48546" style="width: 100.0%; height: 100.0%;"><b>颱風路徑</b><br>無詳細說明</div>`)[0];
+                popup_d3048d06054b543725fc96b1c68881b3.setContent(html_1de7fdfcf995a8dd7786b97c80e48546);
+            
+        
+
+        circle_marker_0998d4b46d9b5907f5bfddcbab5193e8.bindPopup(popup_d3048d06054b543725fc96b1c68881b3)
+        ;
+
+        
+    
+    
+            circle_marker_0998d4b46d9b5907f5bfddcbab5193e8.bindTooltip(
+                `<div>
+                     颱風路徑
+                 </div>`,
+                {
+  "sticky": true,
+}
+            );
+        
+    
+            var poly_line_63b8e1bac097669a975bfbfa5512cc65 = L.polyline(
+                [[13.1, 142.3], [14.7, 138.3], [16.7, 133.9], [18.9, 129.2], [20.4, 126.3], [22.2, 123.5]],
+                {"bubblingMouseEvents": true, "color": "green", "dashArray": null, "dashOffset": null, "fill": false, "fillColor": "green", "fillOpacity": 0.2, "fillRule": "evenodd", "lineCap": "round", "lineJoin": "round", "noClip": false, "opacity": 0.85, "smoothFactor": 1.0, "stroke": true, "weight": 4}
+            ).addTo(map_195c8d8fffa786ee2ed7156da06583c8);
+        
+    
+        var popup_bff0609e9109d291becfff22fa388246 = L.popup({
+  "maxWidth": 300,
+});
+
+        
+            
+                var html_64c467bbacd834e7e329c05e85c383f6 = $(`<div id="html_64c467bbacd834e7e329c05e85c383f6" style="width: 100.0%; height: 100.0%;"><b>預測機構：</b>JTWC</div>`)[0];
+                popup_bff0609e9109d291becfff22fa388246.setContent(html_64c467bbacd834e7e329c05e85c383f6);
+            
+        
+
+        poly_line_63b8e1bac097669a975bfbfa5512cc65.bindPopup(popup_bff0609e9109d291becfff22fa388246)
+        ;
+
+        
+    
+    
+            poly_line_63b8e1bac097669a975bfbfa5512cc65.bindTooltip(
+                `<div>
+                     <b>JTWC</b>
+                 </div>`,
+                {
+  "sticky": true,
+}
+            );
+        
+    
+            var circle_marker_a1f6ac21db9fcde541f913e07925fbf0 = L.circleMarker(
+                [13.1000003814697, 142.399993896484],
+                {"bubblingMouseEvents": true, "color": "blue", "dashArray": null, "dashOffset": null, "fill": true, "fillColor": "blue", "fillOpacity": 0.8, "fillRule": "evenodd", "lineCap": "round", "lineJoin": "round", "opacity": 1.0, "radius": 4, "stroke": true, "weight": 3}
+            ).addTo(map_195c8d8fffa786ee2ed7156da06583c8);
+        
+    
+        var popup_8d85b885725a933c3773ca83a1bebfd5 = L.popup({
+  "maxWidth": 300,
+});
+
+        
+            
+                var html_a08e8244def49ac6031b50c6caaac8fc = $(`<div id="html_a08e8244def49ac6031b50c6caaac8fc" style="width: 100.0%; height: 100.0%;"><b>JMA發佈時間:10/18 14</b><br>JMA發佈時間:10/18 14</div>`)[0];
+                popup_8d85b885725a933c3773ca83a1bebfd5.setContent(html_a08e8244def49ac6031b50c6caaac8fc);
+            
+        
+
+        circle_marker_a1f6ac21db9fcde541f913e07925fbf0.bindPopup(popup_8d85b885725a933c3773ca83a1bebfd5)
+        ;
+
+        
+    
+    
+            circle_marker_a1f6ac21db9fcde541f913e07925fbf0.bindTooltip(
+                `<div>
+                     JMA發佈時間:10/18 14
+                 </div>`,
+                {
+  "sticky": true,
+}
+            );
+        
+    
+            var circle_marker_ac010a1492b31301debf9c578d288d43 = L.circleMarker(
+                [14.8999996185303, 138.699996948242],
+                {"bubblingMouseEvents": true, "color": "cadetblue", "dashArray": null, "dashOffset": null, "fill": true, "fillColor": "cadetblue", "fillOpacity": 0.8, "fillRule": "evenodd", "lineCap": "round", "lineJoin": "round", "opacity": 1.0, "radius": 4, "stroke": true, "weight": 3}
+            ).addTo(map_195c8d8fffa786ee2ed7156da06583c8);
+        
+    
+        var popup_59f1d95947841bd4818c774ec1fcc4f2 = L.popup({
+  "maxWidth": 300,
+});
+
+        
+            
+                var html_00f5b39cfdfe312c50c0b5599a0a1006 = $(`<div id="html_00f5b39cfdfe312c50c0b5599a0a1006" style="width: 100.0%; height: 100.0%;"><b>颱風路徑</b><br>無詳細說明</div>`)[0];
+                popup_59f1d95947841bd4818c774ec1fcc4f2.setContent(html_00f5b39cfdfe312c50c0b5599a0a1006);
+            
+        
+
+        circle_marker_ac010a1492b31301debf9c578d288d43.bindPopup(popup_59f1d95947841bd4818c774ec1fcc4f2)
+        ;
+
+        
+    
+    
+            circle_marker_ac010a1492b31301debf9c578d288d43.bindTooltip(
+                `<div>
+                     颱風路徑
+                 </div>`,
+                {
+  "sticky": true,
+}
+            );
+        
+    
+            var circle_marker_675dc6234dc048ddb9de6aa4661f529b = L.circleMarker(
+                [16.8999996185303, 134.300003051758],
+                {"bubblingMouseEvents": true, "color": "cadetblue", "dashArray": null, "dashOffset": null, "fill": true, "fillColor": "cadetblue", "fillOpacity": 0.8, "fillRule": "evenodd", "lineCap": "round", "lineJoin": "round", "opacity": 1.0, "radius": 4, "stroke": true, "weight": 3}
+            ).addTo(map_195c8d8fffa786ee2ed7156da06583c8);
+        
+    
+        var popup_9b6dbb881bd81c67e7a1e119352cbcdf = L.popup({
+  "maxWidth": 300,
+});
+
+        
+            
+                var html_f5afe7bdbd6cc43eaebd6601121615ee = $(`<div id="html_f5afe7bdbd6cc43eaebd6601121615ee" style="width: 100.0%; height: 100.0%;"><b>颱風路徑</b><br>無詳細說明</div>`)[0];
+                popup_9b6dbb881bd81c67e7a1e119352cbcdf.setContent(html_f5afe7bdbd6cc43eaebd6601121615ee);
+            
+        
+
+        circle_marker_675dc6234dc048ddb9de6aa4661f529b.bindPopup(popup_9b6dbb881bd81c67e7a1e119352cbcdf)
+        ;
+
+        
+    
+    
+            circle_marker_675dc6234dc048ddb9de6aa4661f529b.bindTooltip(
+                `<div>
+                     颱風路徑
+                 </div>`,
+                {
+  "sticky": true,
+}
+            );
+        
+    
+            var circle_marker_2d3768efbfd167ce5209f8ca33495fce = L.circleMarker(
+                [19.1000003814697, 129.300003051758],
+                {"bubblingMouseEvents": true, "color": "cadetblue", "dashArray": null, "dashOffset": null, "fill": true, "fillColor": "cadetblue", "fillOpacity": 0.8, "fillRule": "evenodd", "lineCap": "round", "lineJoin": "round", "opacity": 1.0, "radius": 4, "stroke": true, "weight": 3}
+            ).addTo(map_195c8d8fffa786ee2ed7156da06583c8);
+        
+    
+        var popup_7b456920bec586ace521149bb5b6a8df = L.popup({
+  "maxWidth": 300,
+});
+
+        
+            
+                var html_b046d401c78fb94d34c8b89f8ba92c07 = $(`<div id="html_b046d401c78fb94d34c8b89f8ba92c07" style="width: 100.0%; height: 100.0%;"><b>颱風路徑</b><br>無詳細說明</div>`)[0];
+                popup_7b456920bec586ace521149bb5b6a8df.setContent(html_b046d401c78fb94d34c8b89f8ba92c07);
+            
+        
+
+        circle_marker_2d3768efbfd167ce5209f8ca33495fce.bindPopup(popup_7b456920bec586ace521149bb5b6a8df)
+        ;
+
+        
+    
+    
+            circle_marker_2d3768efbfd167ce5209f8ca33495fce.bindTooltip(
+                `<div>
+                     颱風路徑
+                 </div>`,
+                {
+  "sticky": true,
+}
+            );
+        
+    
+            var circle_marker_75f4dd1cee874de7743e1f15f579be5b = L.circleMarker(
+                [20.1000003814697, 126.099998474121],
+                {"bubblingMouseEvents": true, "color": "cadetblue", "dashArray": null, "dashOffset": null, "fill": true, "fillColor": "cadetblue", "fillOpacity": 0.8, "fillRule": "evenodd", "lineCap": "round", "lineJoin": "round", "opacity": 1.0, "radius": 4, "stroke": true, "weight": 3}
+            ).addTo(map_195c8d8fffa786ee2ed7156da06583c8);
+        
+    
+        var popup_5fda489831148c51f5c9c3616641e120 = L.popup({
+  "maxWidth": 300,
+});
+
+        
+            
+                var html_47c4eeda11862f627b52d22a9005f74c = $(`<div id="html_47c4eeda11862f627b52d22a9005f74c" style="width: 100.0%; height: 100.0%;"><b>颱風路徑</b><br>無詳細說明</div>`)[0];
+                popup_5fda489831148c51f5c9c3616641e120.setContent(html_47c4eeda11862f627b52d22a9005f74c);
+            
+        
+
+        circle_marker_75f4dd1cee874de7743e1f15f579be5b.bindPopup(popup_5fda489831148c51f5c9c3616641e120)
+        ;
+
+        
+    
+    
+            circle_marker_75f4dd1cee874de7743e1f15f579be5b.bindTooltip(
+                `<div>
+                     颱風路徑
+                 </div>`,
+                {
+  "sticky": true,
+}
+            );
+        
+    
+            var circle_marker_6401a85f53d7c422a1ba189c402e5acf = L.circleMarker(
+                [21.6000003814697, 122.800003051758],
+                {"bubblingMouseEvents": true, "color": "cadetblue", "dashArray": null, "dashOffset": null, "fill": true, "fillColor": "cadetblue", "fillOpacity": 0.8, "fillRule": "evenodd", "lineCap": "round", "lineJoin": "round", "opacity": 1.0, "radius": 4, "stroke": true, "weight": 3}
+            ).addTo(map_195c8d8fffa786ee2ed7156da06583c8);
+        
+    
+        var popup_e9ce8664b1fbe887b9c408f56f4f0105 = L.popup({
+  "maxWidth": 300,
+});
+
+        
+            
+                var html_b051f29f4f21ee9ef13d52efd6d87261 = $(`<div id="html_b051f29f4f21ee9ef13d52efd6d87261" style="width: 100.0%; height: 100.0%;"><b>颱風路徑</b><br>無詳細說明</div>`)[0];
+                popup_e9ce8664b1fbe887b9c408f56f4f0105.setContent(html_b051f29f4f21ee9ef13d52efd6d87261);
+            
+        
+
+        circle_marker_6401a85f53d7c422a1ba189c402e5acf.bindPopup(popup_e9ce8664b1fbe887b9c408f56f4f0105)
+        ;
+
+        
+    
+    
+            circle_marker_6401a85f53d7c422a1ba189c402e5acf.bindTooltip(
+                `<div>
+                     颱風路徑
+                 </div>`,
+                {
+  "sticky": true,
+}
+            );
+        
+    
+            var poly_line_497dedab05157aec259de2d15669bc69 = L.polyline(
+                [[13.1, 142.4], [14.9, 138.7], [16.9, 134.3], [19.1, 129.3], [20.1, 126.1], [21.6, 122.8]],
+                {"bubblingMouseEvents": true, "color": "blue", "dashArray": null, "dashOffset": null, "fill": false, "fillColor": "blue", "fillOpacity": 0.2, "fillRule": "evenodd", "lineCap": "round", "lineJoin": "round", "noClip": false, "opacity": 0.85, "smoothFactor": 1.0, "stroke": true, "weight": 4}
+            ).addTo(map_195c8d8fffa786ee2ed7156da06583c8);
+        
+    
+        var popup_0ab45c57384bc200aaf59076268b9b3c = L.popup({
+  "maxWidth": 300,
+});
+
+        
+            
+                var html_ffcdf7229680d80f7894c895693ba3f1 = $(`<div id="html_ffcdf7229680d80f7894c895693ba3f1" style="width: 100.0%; height: 100.0%;"><b>預測機構：</b>JMA</div>`)[0];
+                popup_0ab45c57384bc200aaf59076268b9b3c.setContent(html_ffcdf7229680d80f7894c895693ba3f1);
+            
+        
+
+        poly_line_497dedab05157aec259de2d15669bc69.bindPopup(popup_0ab45c57384bc200aaf59076268b9b3c)
+        ;
+
+        
+    
+    
+            poly_line_497dedab05157aec259de2d15669bc69.bindTooltip(
+                `<div>
+                     <b>JMA</b>
+                 </div>`,
+                {
+  "sticky": true,
+}
+            );
+        
+    
+            var circle_marker_41af235b11d76cfe3291934298ba7c5e = L.circleMarker(
+                [13.1000003814697, 141.800003051758],
+                {"bubblingMouseEvents": true, "color": "cadetblue", "dashArray": null, "dashOffset": null, "fill": true, "fillColor": "cadetblue", "fillOpacity": 0.8, "fillRule": "evenodd", "lineCap": "round", "lineJoin": "round", "opacity": 1.0, "radius": 4, "stroke": true, "weight": 3}
+            ).addTo(map_195c8d8fffa786ee2ed7156da06583c8);
+        
+    
+        var popup_c100eea450786121c49cecd755dd92fc = L.popup({
+  "maxWidth": 300,
+});
+
+        
+            
+                var html_c106ba1cbca5bbf45cef953cc42d8a0c = $(`<div id="html_c106ba1cbca5bbf45cef953cc42d8a0c" style="width: 100.0%; height: 100.0%;"><b>NMC發佈時間:10/18 17</b><br>NMC發佈時間:10/18 17</div>`)[0];
+                popup_c100eea450786121c49cecd755dd92fc.setContent(html_c106ba1cbca5bbf45cef953cc42d8a0c);
+            
+        
+
+        circle_marker_41af235b11d76cfe3291934298ba7c5e.bindPopup(popup_c100eea450786121c49cecd755dd92fc)
+        ;
+
+        
+    
+    
+            circle_marker_41af235b11d76cfe3291934298ba7c5e.bindTooltip(
+                `<div>
+                     NMC發佈時間:10/18 17
+                 </div>`,
+                {
+  "sticky": true,
+}
+            );
+        
+    
+            var circle_marker_2c6bffa69354f8bb2cf2a76540bbcc72 = L.circleMarker(
+                [14.8999996185303, 138.0],
+                {"bubblingMouseEvents": true, "color": "cadetblue", "dashArray": null, "dashOffset": null, "fill": true, "fillColor": "cadetblue", "fillOpacity": 0.8, "fillRule": "evenodd", "lineCap": "round", "lineJoin": "round", "opacity": 1.0, "radius": 4, "stroke": true, "weight": 3}
+            ).addTo(map_195c8d8fffa786ee2ed7156da06583c8);
+        
+    
+        var popup_6e7b8100695b524401777c7396192ec0 = L.popup({
+  "maxWidth": 300,
+});
+
+        
+            
+                var html_d8913af9d63a8c51e09888165f515386 = $(`<div id="html_d8913af9d63a8c51e09888165f515386" style="width: 100.0%; height: 100.0%;"><b>颱風路徑</b><br>無詳細說明</div>`)[0];
+                popup_6e7b8100695b524401777c7396192ec0.setContent(html_d8913af9d63a8c51e09888165f515386);
+            
+        
+
+        circle_marker_2c6bffa69354f8bb2cf2a76540bbcc72.bindPopup(popup_6e7b8100695b524401777c7396192ec0)
+        ;
+
+        
+    
+    
+            circle_marker_2c6bffa69354f8bb2cf2a76540bbcc72.bindTooltip(
+                `<div>
+                     颱風路徑
+                 </div>`,
+                {
+  "sticky": true,
+}
+            );
+        
+    
+            var circle_marker_e31c45396c7ec7bf87e3740192120ac5 = L.circleMarker(
+                [16.8999996185303, 133.5],
+                {"bubblingMouseEvents": true, "color": "cadetblue", "dashArray": null, "dashOffset": null, "fill": true, "fillColor": "cadetblue", "fillOpacity": 0.8, "fillRule": "evenodd", "lineCap": "round", "lineJoin": "round", "opacity": 1.0, "radius": 4, "stroke": true, "weight": 3}
+            ).addTo(map_195c8d8fffa786ee2ed7156da06583c8);
+        
+    
+        var popup_8d6ec3c0625ebe7686de8a86a1e3abcc = L.popup({
+  "maxWidth": 300,
+});
+
+        
+            
+                var html_2708373e7c0d6536e6e10f536714ed8c = $(`<div id="html_2708373e7c0d6536e6e10f536714ed8c" style="width: 100.0%; height: 100.0%;"><b>颱風路徑</b><br>無詳細說明</div>`)[0];
+                popup_8d6ec3c0625ebe7686de8a86a1e3abcc.setContent(html_2708373e7c0d6536e6e10f536714ed8c);
+            
+        
+
+        circle_marker_e31c45396c7ec7bf87e3740192120ac5.bindPopup(popup_8d6ec3c0625ebe7686de8a86a1e3abcc)
+        ;
+
+        
+    
+    
+            circle_marker_e31c45396c7ec7bf87e3740192120ac5.bindTooltip(
+                `<div>
+                     颱風路徑
+                 </div>`,
+                {
+  "sticky": true,
+}
+            );
+        
+    
+            var circle_marker_276e99e360df8a86807b342bb4e65f8a = L.circleMarker(
+                [19.2999992370605, 128.600006103516],
+                {"bubblingMouseEvents": true, "color": "cadetblue", "dashArray": null, "dashOffset": null, "fill": true, "fillColor": "cadetblue", "fillOpacity": 0.8, "fillRule": "evenodd", "lineCap": "round", "lineJoin": "round", "opacity": 1.0, "radius": 4, "stroke": true, "weight": 3}
+            ).addTo(map_195c8d8fffa786ee2ed7156da06583c8);
+        
+    
+        var popup_eee95712f0872e87a12716a4470db8ca = L.popup({
+  "maxWidth": 300,
+});
+
+        
+            
+                var html_fcfcf24c8ec3e5e55159d00b446703d5 = $(`<div id="html_fcfcf24c8ec3e5e55159d00b446703d5" style="width: 100.0%; height: 100.0%;"><b>颱風路徑</b><br>無詳細說明</div>`)[0];
+                popup_eee95712f0872e87a12716a4470db8ca.setContent(html_fcfcf24c8ec3e5e55159d00b446703d5);
+            
+        
+
+        circle_marker_276e99e360df8a86807b342bb4e65f8a.bindPopup(popup_eee95712f0872e87a12716a4470db8ca)
+        ;
+
+        
+    
+    
+            circle_marker_276e99e360df8a86807b342bb4e65f8a.bindTooltip(
+                `<div>
+                     颱風路徑
+                 </div>`,
+                {
+  "sticky": true,
+}
+            );
+        
+    
+            var circle_marker_c9fc5a88788144268c35d78bcf126d67 = L.circleMarker(
+                [20.7000007629395, 125.599998474121],
+                {"bubblingMouseEvents": true, "color": "cadetblue", "dashArray": null, "dashOffset": null, "fill": true, "fillColor": "cadetblue", "fillOpacity": 0.8, "fillRule": "evenodd", "lineCap": "round", "lineJoin": "round", "opacity": 1.0, "radius": 4, "stroke": true, "weight": 3}
+            ).addTo(map_195c8d8fffa786ee2ed7156da06583c8);
+        
+    
+        var popup_b469e9c6e40e9889c3c18645a2af634a = L.popup({
+  "maxWidth": 300,
+});
+
+        
+            
+                var html_a80f7008308b5a563c0cf223c332382e = $(`<div id="html_a80f7008308b5a563c0cf223c332382e" style="width: 100.0%; height: 100.0%;"><b>颱風路徑</b><br>無詳細說明</div>`)[0];
+                popup_b469e9c6e40e9889c3c18645a2af634a.setContent(html_a80f7008308b5a563c0cf223c332382e);
+            
+        
+
+        circle_marker_c9fc5a88788144268c35d78bcf126d67.bindPopup(popup_b469e9c6e40e9889c3c18645a2af634a)
+        ;
+
+        
+    
+    
+            circle_marker_c9fc5a88788144268c35d78bcf126d67.bindTooltip(
+                `<div>
+                     颱風路徑
+                 </div>`,
+                {
+  "sticky": true,
+}
+            );
+        
+    
+            var circle_marker_aaad0f829284a2ee6f406c6d2a7066f5 = L.circleMarker(
+                [22.2000007629395, 122.300003051758],
+                {"bubblingMouseEvents": true, "color": "cadetblue", "dashArray": null, "dashOffset": null, "fill": true, "fillColor": "cadetblue", "fillOpacity": 0.8, "fillRule": "evenodd", "lineCap": "round", "lineJoin": "round", "opacity": 1.0, "radius": 4, "stroke": true, "weight": 3}
+            ).addTo(map_195c8d8fffa786ee2ed7156da06583c8);
+        
+    
+        var popup_06f893ca1e1b203d84c1bb2750bcceba = L.popup({
+  "maxWidth": 300,
+});
+
+        
+            
+                var html_8190da68749ee11cedc539a12ae78701 = $(`<div id="html_8190da68749ee11cedc539a12ae78701" style="width: 100.0%; height: 100.0%;"><b>颱風路徑</b><br>無詳細說明</div>`)[0];
+                popup_06f893ca1e1b203d84c1bb2750bcceba.setContent(html_8190da68749ee11cedc539a12ae78701);
+            
+        
+
+        circle_marker_aaad0f829284a2ee6f406c6d2a7066f5.bindPopup(popup_06f893ca1e1b203d84c1bb2750bcceba)
+        ;
+
+        
+    
+    
+            circle_marker_aaad0f829284a2ee6f406c6d2a7066f5.bindTooltip(
+                `<div>
+                     颱風路徑
+                 </div>`,
+                {
+  "sticky": true,
+}
+            );
+        
+    
+            var poly_line_55dbb251a46991b72572b8dfdf868ef1 = L.polyline(
+                [[13.1, 141.8], [14.9, 138.0], [16.9, 133.5], [19.3, 128.6], [20.7, 125.6], [22.2, 122.3]],
+                {"bubblingMouseEvents": true, "color": "cadetblue", "dashArray": null, "dashOffset": null, "fill": false, "fillColor": "cadetblue", "fillOpacity": 0.2, "fillRule": "evenodd", "lineCap": "round", "lineJoin": "round", "noClip": false, "opacity": 0.85, "smoothFactor": 1.0, "stroke": true, "weight": 4}
+            ).addTo(map_195c8d8fffa786ee2ed7156da06583c8);
+        
+    
+        var popup_6f420b675c4678b89db8e7967b1f9e6b = L.popup({
+  "maxWidth": 300,
+});
+
+        
+            
+                var html_5938300d3b8f23ab99ae39e18586fde3 = $(`<div id="html_5938300d3b8f23ab99ae39e18586fde3" style="width: 100.0%; height: 100.0%;"><b>預測機構：</b>NMC</div>`)[0];
+                popup_6f420b675c4678b89db8e7967b1f9e6b.setContent(html_5938300d3b8f23ab99ae39e18586fde3);
+            
+        
+
+        poly_line_55dbb251a46991b72572b8dfdf868ef1.bindPopup(popup_6f420b675c4678b89db8e7967b1f9e6b)
+        ;
+
+        
+    
+    
+            poly_line_55dbb251a46991b72572b8dfdf868ef1.bindTooltip(
+                `<div>
+                     <b>NMC</b>
+                 </div>`,
+                {
+  "sticky": true,
+}
+            );
+        
+    
+            var circle_marker_205a34ec9a1ebf2f4e4fb2765478f2a2 = L.circleMarker(
+                [13.1999998092651, 142.399993896484],
+                {"bubblingMouseEvents": true, "color": "red", "dashArray": null, "dashOffset": null, "fill": true, "fillColor": "red", "fillOpacity": 0.8, "fillRule": "evenodd", "lineCap": "round", "lineJoin": "round", "opacity": 1.0, "radius": 4, "stroke": true, "weight": 3}
+            ).addTo(map_195c8d8fffa786ee2ed7156da06583c8);
+        
+    
+        var popup_f1b5a9d3e9d5fb6c62bf6286b4dc842a = L.popup({
+  "maxWidth": 300,
+});
+
+        
+            
+                var html_298e9730770c0b4fbd5f63ba19428d88 = $(`<div id="html_298e9730770c0b4fbd5f63ba19428d88" style="width: 100.0%; height: 100.0%;"><b>CWA發佈時間:10/18 14</b><br>CWA發佈時間:10/18 14</div>`)[0];
+                popup_f1b5a9d3e9d5fb6c62bf6286b4dc842a.setContent(html_298e9730770c0b4fbd5f63ba19428d88);
+            
+        
+
+        circle_marker_205a34ec9a1ebf2f4e4fb2765478f2a2.bindPopup(popup_f1b5a9d3e9d5fb6c62bf6286b4dc842a)
+        ;
+
+        
+    
+    
+            circle_marker_205a34ec9a1ebf2f4e4fb2765478f2a2.bindTooltip(
+                `<div>
+                     CWA發佈時間:10/18 14
+                 </div>`,
+                {
+  "sticky": true,
+}
+            );
+        
+    
+            var circle_marker_0916a374d09f13b403affd43a500ccef = L.circleMarker(
+                [14.8999996185303, 138.5],
+                {"bubblingMouseEvents": true, "color": "cadetblue", "dashArray": null, "dashOffset": null, "fill": true, "fillColor": "cadetblue", "fillOpacity": 0.8, "fillRule": "evenodd", "lineCap": "round", "lineJoin": "round", "opacity": 1.0, "radius": 4, "stroke": true, "weight": 3}
+            ).addTo(map_195c8d8fffa786ee2ed7156da06583c8);
+        
+    
+        var popup_863f6040d32bd37bd0f868942580cb69 = L.popup({
+  "maxWidth": 300,
+});
+
+        
+            
+                var html_901695dd0d1622b69c888ed451cb3015 = $(`<div id="html_901695dd0d1622b69c888ed451cb3015" style="width: 100.0%; height: 100.0%;"><b>颱風路徑</b><br>無詳細說明</div>`)[0];
+                popup_863f6040d32bd37bd0f868942580cb69.setContent(html_901695dd0d1622b69c888ed451cb3015);
+            
+        
+
+        circle_marker_0916a374d09f13b403affd43a500ccef.bindPopup(popup_863f6040d32bd37bd0f868942580cb69)
+        ;
+
+        
+    
+    
+            circle_marker_0916a374d09f13b403affd43a500ccef.bindTooltip(
+                `<div>
+                     颱風路徑
+                 </div>`,
+                {
+  "sticky": true,
+}
+            );
+        
+    
+            var circle_marker_c9c11485221aaa8c32e555fdd872b955 = L.circleMarker(
+                [17.0, 134.100006103516],
+                {"bubblingMouseEvents": true, "color": "cadetblue", "dashArray": null, "dashOffset": null, "fill": true, "fillColor": "cadetblue", "fillOpacity": 0.8, "fillRule": "evenodd", "lineCap": "round", "lineJoin": "round", "opacity": 1.0, "radius": 4, "stroke": true, "weight": 3}
+            ).addTo(map_195c8d8fffa786ee2ed7156da06583c8);
+        
+    
+        var popup_5f54326f12d878b6c053df8918809835 = L.popup({
+  "maxWidth": 300,
+});
+
+        
+            
+                var html_92a5063cc2dcec6af76fdd3d71646c34 = $(`<div id="html_92a5063cc2dcec6af76fdd3d71646c34" style="width: 100.0%; height: 100.0%;"><b>颱風路徑</b><br>無詳細說明</div>`)[0];
+                popup_5f54326f12d878b6c053df8918809835.setContent(html_92a5063cc2dcec6af76fdd3d71646c34);
+            
+        
+
+        circle_marker_c9c11485221aaa8c32e555fdd872b955.bindPopup(popup_5f54326f12d878b6c053df8918809835)
+        ;
+
+        
+    
+    
+            circle_marker_c9c11485221aaa8c32e555fdd872b955.bindTooltip(
+                `<div>
+                     颱風路徑
+                 </div>`,
+                {
+  "sticky": true,
+}
+            );
+        
+    
+            var circle_marker_df924f5365cc717128186923abe47b5b = L.circleMarker(
+                [19.3999996185303, 129.199996948242],
+                {"bubblingMouseEvents": true, "color": "cadetblue", "dashArray": null, "dashOffset": null, "fill": true, "fillColor": "cadetblue", "fillOpacity": 0.8, "fillRule": "evenodd", "lineCap": "round", "lineJoin": "round", "opacity": 1.0, "radius": 4, "stroke": true, "weight": 3}
+            ).addTo(map_195c8d8fffa786ee2ed7156da06583c8);
+        
+    
+        var popup_c23aaad6d42c85f06cd1ee63af22b263 = L.popup({
+  "maxWidth": 300,
+});
+
+        
+            
+                var html_a549db1d8450a9d17068cd27cf62c0a6 = $(`<div id="html_a549db1d8450a9d17068cd27cf62c0a6" style="width: 100.0%; height: 100.0%;"><b>颱風路徑</b><br>無詳細說明</div>`)[0];
+                popup_c23aaad6d42c85f06cd1ee63af22b263.setContent(html_a549db1d8450a9d17068cd27cf62c0a6);
+            
+        
+
+        circle_marker_df924f5365cc717128186923abe47b5b.bindPopup(popup_c23aaad6d42c85f06cd1ee63af22b263)
+        ;
+
+        
+    
+    
+            circle_marker_df924f5365cc717128186923abe47b5b.bindTooltip(
+                `<div>
+                     颱風路徑
+                 </div>`,
+                {
+  "sticky": true,
+}
+            );
+        
+    
+            var circle_marker_ac418bf66c28e1515aae3c33036950e0 = L.circleMarker(
+                [21.1000003814697, 126.400001525879],
+                {"bubblingMouseEvents": true, "color": "cadetblue", "dashArray": null, "dashOffset": null, "fill": true, "fillColor": "cadetblue", "fillOpacity": 0.8, "fillRule": "evenodd", "lineCap": "round", "lineJoin": "round", "opacity": 1.0, "radius": 4, "stroke": true, "weight": 3}
+            ).addTo(map_195c8d8fffa786ee2ed7156da06583c8);
+        
+    
+        var popup_267a981792cf175db5f6e04bb13afa39 = L.popup({
+  "maxWidth": 300,
+});
+
+        
+            
+                var html_76e7f7fae3701a4bbbc43434a75b7a9d = $(`<div id="html_76e7f7fae3701a4bbbc43434a75b7a9d" style="width: 100.0%; height: 100.0%;"><b>颱風路徑</b><br>無詳細說明</div>`)[0];
+                popup_267a981792cf175db5f6e04bb13afa39.setContent(html_76e7f7fae3701a4bbbc43434a75b7a9d);
+            
+        
+
+        circle_marker_ac418bf66c28e1515aae3c33036950e0.bindPopup(popup_267a981792cf175db5f6e04bb13afa39)
+        ;
+
+        
+    
+    
+            circle_marker_ac418bf66c28e1515aae3c33036950e0.bindTooltip(
+                `<div>
+                     颱風路徑
+                 </div>`,
+                {
+  "sticky": true,
+}
+            );
+        
+    
+            var circle_marker_cc9f9313aa9b825b55fdb823d5e32d18 = L.circleMarker(
+                [22.8999996185303, 124.400001525879],
+                {"bubblingMouseEvents": true, "color": "cadetblue", "dashArray": null, "dashOffset": null, "fill": true, "fillColor": "cadetblue", "fillOpacity": 0.8, "fillRule": "evenodd", "lineCap": "round", "lineJoin": "round", "opacity": 1.0, "radius": 4, "stroke": true, "weight": 3}
+            ).addTo(map_195c8d8fffa786ee2ed7156da06583c8);
+        
+    
+        var popup_0c511040e1915757868963ea453c458f = L.popup({
+  "maxWidth": 300,
+});
+
+        
+            
+                var html_1e88a32ce6045aabe7cfe01774fbe849 = $(`<div id="html_1e88a32ce6045aabe7cfe01774fbe849" style="width: 100.0%; height: 100.0%;"><b>颱風路徑</b><br>無詳細說明</div>`)[0];
+                popup_0c511040e1915757868963ea453c458f.setContent(html_1e88a32ce6045aabe7cfe01774fbe849);
+            
+        
+
+        circle_marker_cc9f9313aa9b825b55fdb823d5e32d18.bindPopup(popup_0c511040e1915757868963ea453c458f)
+        ;
+
+        
+    
+    
+            circle_marker_cc9f9313aa9b825b55fdb823d5e32d18.bindTooltip(
+                `<div>
+                     颱風路徑
+                 </div>`,
+                {
+  "sticky": true,
+}
+            );
+        
+    
+            var poly_line_bbd7252d2723e954757c9eb3a12f50ce = L.polyline(
+                [[13.2, 142.4], [14.9, 138.5], [17.0, 134.1], [19.4, 129.2], [21.1, 126.4], [22.9, 124.4]],
+                {"bubblingMouseEvents": true, "color": "red", "dashArray": null, "dashOffset": null, "fill": false, "fillColor": "red", "fillOpacity": 0.2, "fillRule": "evenodd", "lineCap": "round", "lineJoin": "round", "noClip": false, "opacity": 0.85, "smoothFactor": 1.0, "stroke": true, "weight": 4}
+            ).addTo(map_195c8d8fffa786ee2ed7156da06583c8);
+        
+    
+        var popup_d562a6b2248e3c6eda97882b739307cf = L.popup({
+  "maxWidth": 300,
+});
+
+        
+            
+                var html_8b4ec0f90ebd69306738e48c0dee366d = $(`<div id="html_8b4ec0f90ebd69306738e48c0dee366d" style="width: 100.0%; height: 100.0%;"><b>預測機構：</b>CWA</div>`)[0];
+                popup_d562a6b2248e3c6eda97882b739307cf.setContent(html_8b4ec0f90ebd69306738e48c0dee366d);
+            
+        
+
+        poly_line_bbd7252d2723e954757c9eb3a12f50ce.bindPopup(popup_d562a6b2248e3c6eda97882b739307cf)
+        ;
+
+        
+    
+    
+            poly_line_bbd7252d2723e954757c9eb3a12f50ce.bindTooltip(
+                `<div>
+                     <b>CWA</b>
+                 </div>`,
+                {
+  "sticky": true,
+}
+            );
+        
+    
+            var circle_marker_88ce5becfcaff0f08fce7c29aadafc3f = L.circleMarker(
+                [13.1000003814697, 142.399993896484],
+                {"bubblingMouseEvents": true, "color": "purple", "dashArray": null, "dashOffset": null, "fill": true, "fillColor": "purple", "fillOpacity": 0.8, "fillRule": "evenodd", "lineCap": "round", "lineJoin": "round", "opacity": 1.0, "radius": 4, "stroke": true, "weight": 3}
+            ).addTo(map_195c8d8fffa786ee2ed7156da06583c8);
+        
+    
+        var popup_9386b988d378e650d42d1ceeb7ca1f90 = L.popup({
+  "maxWidth": 300,
+});
+
+        
+            
+                var html_67ca577ee00ca6982197ff78aeb1ce0d = $(`<div id="html_67ca577ee00ca6982197ff78aeb1ce0d" style="width: 100.0%; height: 100.0%;"><b>KMA發佈時間:10/18 14</b><br>KMA發佈時間:10/18 14</div>`)[0];
+                popup_9386b988d378e650d42d1ceeb7ca1f90.setContent(html_67ca577ee00ca6982197ff78aeb1ce0d);
+            
+        
+
+        circle_marker_88ce5becfcaff0f08fce7c29aadafc3f.bindPopup(popup_9386b988d378e650d42d1ceeb7ca1f90)
+        ;
+
+        
+    
+    
+            circle_marker_88ce5becfcaff0f08fce7c29aadafc3f.bindTooltip(
+                `<div>
+                     KMA發佈時間:10/18 14
+                 </div>`,
+                {
+  "sticky": true,
+}
+            );
+        
+    
+            var circle_marker_b1e8491cebd91b776479ce7b8660e58f = L.circleMarker(
+                [14.8000001907349, 138.600006103516],
+                {"bubblingMouseEvents": true, "color": "cadetblue", "dashArray": null, "dashOffset": null, "fill": true, "fillColor": "cadetblue", "fillOpacity": 0.8, "fillRule": "evenodd", "lineCap": "round", "lineJoin": "round", "opacity": 1.0, "radius": 4, "stroke": true, "weight": 3}
+            ).addTo(map_195c8d8fffa786ee2ed7156da06583c8);
+        
+    
+        var popup_18cea319c9eff52a5896467be4a45f61 = L.popup({
+  "maxWidth": 300,
+});
+
+        
+            
+                var html_3e180d72e290cc65ab57467ad701869f = $(`<div id="html_3e180d72e290cc65ab57467ad701869f" style="width: 100.0%; height: 100.0%;"><b>颱風路徑</b><br>無詳細說明</div>`)[0];
+                popup_18cea319c9eff52a5896467be4a45f61.setContent(html_3e180d72e290cc65ab57467ad701869f);
+            
+        
+
+        circle_marker_b1e8491cebd91b776479ce7b8660e58f.bindPopup(popup_18cea319c9eff52a5896467be4a45f61)
+        ;
+
+        
+    
+    
+            circle_marker_b1e8491cebd91b776479ce7b8660e58f.bindTooltip(
+                `<div>
+                     颱風路徑
+                 </div>`,
+                {
+  "sticky": true,
+}
+            );
+        
+    
+            var circle_marker_5b4870768ab55e6bae7f9195524dcd85 = L.circleMarker(
+                [16.7000007629395, 134.399993896484],
+                {"bubblingMouseEvents": true, "color": "cadetblue", "dashArray": null, "dashOffset": null, "fill": true, "fillColor": "cadetblue", "fillOpacity": 0.8, "fillRule": "evenodd", "lineCap": "round", "lineJoin": "round", "opacity": 1.0, "radius": 4, "stroke": true, "weight": 3}
+            ).addTo(map_195c8d8fffa786ee2ed7156da06583c8);
+        
+    
+        var popup_8e82f1a4f50606540b906a7aeb199d31 = L.popup({
+  "maxWidth": 300,
+});
+
+        
+            
+                var html_63100ab95f3f1b993594428ae3d208ac = $(`<div id="html_63100ab95f3f1b993594428ae3d208ac" style="width: 100.0%; height: 100.0%;"><b>颱風路徑</b><br>無詳細說明</div>`)[0];
+                popup_8e82f1a4f50606540b906a7aeb199d31.setContent(html_63100ab95f3f1b993594428ae3d208ac);
+            
+        
+
+        circle_marker_5b4870768ab55e6bae7f9195524dcd85.bindPopup(popup_8e82f1a4f50606540b906a7aeb199d31)
+        ;
+
+        
+    
+    
+            circle_marker_5b4870768ab55e6bae7f9195524dcd85.bindTooltip(
+                `<div>
+                     颱風路徑
+                 </div>`,
+                {
+  "sticky": true,
+}
+            );
+        
+    
+            var circle_marker_d48fdd5107cf8e6531cee55bf16902f6 = L.circleMarker(
+                [18.8999996185303, 129.399993896484],
+                {"bubblingMouseEvents": true, "color": "cadetblue", "dashArray": null, "dashOffset": null, "fill": true, "fillColor": "cadetblue", "fillOpacity": 0.8, "fillRule": "evenodd", "lineCap": "round", "lineJoin": "round", "opacity": 1.0, "radius": 4, "stroke": true, "weight": 3}
+            ).addTo(map_195c8d8fffa786ee2ed7156da06583c8);
+        
+    
+        var popup_7731bee97dd0886a066e1b6afcb00ca2 = L.popup({
+  "maxWidth": 300,
+});
+
+        
+            
+                var html_a6ccc052eeddd21e47c5b1e4677dfaa2 = $(`<div id="html_a6ccc052eeddd21e47c5b1e4677dfaa2" style="width: 100.0%; height: 100.0%;"><b>颱風路徑</b><br>無詳細說明</div>`)[0];
+                popup_7731bee97dd0886a066e1b6afcb00ca2.setContent(html_a6ccc052eeddd21e47c5b1e4677dfaa2);
+            
+        
+
+        circle_marker_d48fdd5107cf8e6531cee55bf16902f6.bindPopup(popup_7731bee97dd0886a066e1b6afcb00ca2)
+        ;
+
+        
+    
+    
+            circle_marker_d48fdd5107cf8e6531cee55bf16902f6.bindTooltip(
+                `<div>
+                     颱風路徑
+                 </div>`,
+                {
+  "sticky": true,
+}
+            );
+        
+    
+            var circle_marker_9fdb6680f54fc94e310182d8ba77dc32 = L.circleMarker(
+                [20.2000007629395, 126.0],
+                {"bubblingMouseEvents": true, "color": "cadetblue", "dashArray": null, "dashOffset": null, "fill": true, "fillColor": "cadetblue", "fillOpacity": 0.8, "fillRule": "evenodd", "lineCap": "round", "lineJoin": "round", "opacity": 1.0, "radius": 4, "stroke": true, "weight": 3}
+            ).addTo(map_195c8d8fffa786ee2ed7156da06583c8);
+        
+    
+        var popup_45c172e56444b2222e64391b5699c159 = L.popup({
+  "maxWidth": 300,
+});
+
+        
+            
+                var html_c63affb247eff24c7f050488c58e75fc = $(`<div id="html_c63affb247eff24c7f050488c58e75fc" style="width: 100.0%; height: 100.0%;"><b>颱風路徑</b><br>無詳細說明</div>`)[0];
+                popup_45c172e56444b2222e64391b5699c159.setContent(html_c63affb247eff24c7f050488c58e75fc);
+            
+        
+
+        circle_marker_9fdb6680f54fc94e310182d8ba77dc32.bindPopup(popup_45c172e56444b2222e64391b5699c159)
+        ;
+
+        
+    
+    
+            circle_marker_9fdb6680f54fc94e310182d8ba77dc32.bindTooltip(
+                `<div>
+                     颱風路徑
+                 </div>`,
+                {
+  "sticky": true,
+}
+            );
+        
+    
+            var circle_marker_9684c6545931b65873eddd441320f7b2 = L.circleMarker(
+                [21.7000007629395, 122.699996948242],
+                {"bubblingMouseEvents": true, "color": "cadetblue", "dashArray": null, "dashOffset": null, "fill": true, "fillColor": "cadetblue", "fillOpacity": 0.8, "fillRule": "evenodd", "lineCap": "round", "lineJoin": "round", "opacity": 1.0, "radius": 4, "stroke": true, "weight": 3}
+            ).addTo(map_195c8d8fffa786ee2ed7156da06583c8);
+        
+    
+        var popup_99ee33aa18dfc40b02caec1059330c43 = L.popup({
+  "maxWidth": 300,
+});
+
+        
+            
+                var html_ca198e9ef3963dca508337ed1ec85068 = $(`<div id="html_ca198e9ef3963dca508337ed1ec85068" style="width: 100.0%; height: 100.0%;"><b>颱風路徑</b><br>無詳細說明</div>`)[0];
+                popup_99ee33aa18dfc40b02caec1059330c43.setContent(html_ca198e9ef3963dca508337ed1ec85068);
+            
+        
+
+        circle_marker_9684c6545931b65873eddd441320f7b2.bindPopup(popup_99ee33aa18dfc40b02caec1059330c43)
+        ;
+
+        
+    
+    
+            circle_marker_9684c6545931b65873eddd441320f7b2.bindTooltip(
+                `<div>
+                     颱風路徑
+                 </div>`,
+                {
+  "sticky": true,
+}
+            );
+        
+    
+            var poly_line_41cf58fac4a6bf4e10ac7e68fc5f81d1 = L.polyline(
+                [[13.1, 142.4], [14.8, 138.6], [16.7, 134.4], [18.9, 129.4], [20.2, 126.0], [21.7, 122.7]],
+                {"bubblingMouseEvents": true, "color": "purple", "dashArray": null, "dashOffset": null, "fill": false, "fillColor": "purple", "fillOpacity": 0.2, "fillRule": "evenodd", "lineCap": "round", "lineJoin": "round", "noClip": false, "opacity": 0.85, "smoothFactor": 1.0, "stroke": true, "weight": 4}
+            ).addTo(map_195c8d8fffa786ee2ed7156da06583c8);
+        
+    
+        var popup_0267c6c497b444e7e8237fd90b4261bc = L.popup({
+  "maxWidth": 300,
+});
+
+        
+            
+                var html_de5f2569fac8a0e6b72793de707e19cc = $(`<div id="html_de5f2569fac8a0e6b72793de707e19cc" style="width: 100.0%; height: 100.0%;"><b>預測機構：</b>KMA</div>`)[0];
+                popup_0267c6c497b444e7e8237fd90b4261bc.setContent(html_de5f2569fac8a0e6b72793de707e19cc);
+            
+        
+
+        poly_line_41cf58fac4a6bf4e10ac7e68fc5f81d1.bindPopup(popup_0267c6c497b444e7e8237fd90b4261bc)
+        ;
+
+        
+    
+    
+            poly_line_41cf58fac4a6bf4e10ac7e68fc5f81d1.bindTooltip(
+                `<div>
+                     <b>KMA</b>
+                 </div>`,
+                {
+  "sticky": true,
+}
+            );
+        
+</script>
+</html>
