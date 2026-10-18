@@ -47,7 +47,7 @@ def fetch_kml_from_kmz(url):
         return None
 
 
-# 輔助函式：將 KML 幾何圖形加入圖層
+# 輔助函式：將 KML 幾何圖形加入圖層 (顯示經緯度座標)
 def parse_and_add_kml_to_group(root_elem, target_group, default_color="red"):
     if root_elem is None:
         return
@@ -83,21 +83,24 @@ def parse_and_add_kml_to_group(root_elem, target_group, default_color="red"):
                     popup=folium.Popup(f"<b>{name}</b><br>{desc}", max_width=300),
                 ).add_to(target_group)
 
-        # 點位
+        # 點位（顯示經緯度座標）
         point_coords = pm.find(".//kml:Point/kml:coordinates", ns)
         if point_coords is not None and point_coords.text:
             parts = point_coords.text.strip().split(",")
             if len(parts) >= 2:
+                lon, lat = float(parts[0]), float(parts[1])
+                pos_str = f"中心位置：北緯 {lat:.1f}°, 東經 {lon:.1f}°"
                 folium.CircleMarker(
-                    location=[float(parts[1]), float(parts[0])],
-                    radius=4,
+                    location=[lat, lon],
+                    radius=5,
                     color=default_color,
                     fill=True,
                     fill_color=default_color,
                     fill_opacity=0.8,
-                    tooltip=name,
+                    tooltip=f"{name} ({pos_str})",
                     popup=folium.Popup(
-                        f"<b>{name}</b><br>{desc}", max_width=300
+                        f"<b>{name}</b><br><b>{pos_str}</b><br>{desc}",
+                        max_width=300,
                     ),
                 ).add_to(target_group)
 
@@ -246,13 +249,19 @@ if ncdr_root is not None:
         if point_coords is not None and point_coords.text:
             parts = point_coords.text.strip().split(",")
             if len(parts) >= 2:
+                lon, lat = float(parts[0]), float(parts[1])
+                pos_str = f"北緯 {lat:.1f}°, 東經 {lon:.1f}°"
                 folium.CircleMarker(
-                    location=[float(parts[1]), float(parts[0])],
+                    location=[lat, lon],
                     radius=4,
                     color=color,
                     fill=True,
                     fill_opacity=0.8,
-                    tooltip=f"NCDR: {name}",
+                    tooltip=f"NCDR: {name} ({pos_str})",
+                    popup=folium.Popup(
+                        f"<b>NCDR: {name}</b><br><b>位置：{pos_str}</b>",
+                        max_width=300,
+                    ),
                 ).add_to(fg_ncdr)
 
 
@@ -269,8 +278,8 @@ parse_and_add_kml_to_group(
 )
 
 
-# --- [分頁 1] CWA 颱風警報與結構化颱風數據解析 (W-C0034-001) ---
-print("正在讀取 CWA 警報與結構化颱風數據 (W-C0034-001)...")
+# --- [分頁 1] CWA 颱風警報與結構化颱風數據解析 (含位置座標) ---
+print("正在讀取 CWA 警報與颱風中心位置 (W-C0034-001)...")
 cwa_001_url = f"https://opendata.cwa.gov.tw/api/v1/rest/datastore/W-C0034-001?Authorization={CWA_API_KEY}"
 alert_html = ""
 
@@ -284,7 +293,7 @@ try:
             headline = latest.get("headline", "颱風警報")
             eff_time = latest.get("effective", "")
 
-            # 提取【結構化颱風詳細資訊 (typhoon-info)】
+            # 提取結構化颱風詳細資訊
             t_data = {}
             t_info_list = (
                 latest.get("description", {}).get("typhoon-info", [])
@@ -312,6 +321,12 @@ try:
                         if scales:
                             t_data["scale"] = scales[0].get("value", "")
 
+            # 格式化中心位置
+            pos_formatted = t_data.get("position", "未知")
+            if "," in pos_formatted:
+                plat, plon = pos_formatted.split(",")
+                pos_formatted = f"北緯 {plat}°，東經 {plon}°"
+
             # 組裝結構化颱風數據卡
             typhoon_card_html = ""
             if t_data.get("position"):
@@ -319,7 +334,7 @@ try:
                 <div style="background:#f8f9fa; border:1px solid #cce5ff; padding:8px; border-radius:6px; margin:6px 0; font-size:12px; color:#004085;">
                     <b>颱風名稱</b>：{t_data.get('cwa_name')} ({t_data.get('eng_name')})<br>
                     <b>颱風強度</b>：{t_data.get('scale')}<br>
-                    <b>中心位置</b>：{t_data.get('position')} (緯,經度)<br>
+                    <b style="color:#d9534f;">中心位置</b>：<b>{pos_formatted}</b><br>
                     <b>中心氣壓</b>：{t_data.get('pressure')} hPa<br>
                     <b>最大風速</b>：{t_data.get('max_winds')} m/s | <b>瞬間陣風</b>：{t_data.get('gust')} m/s<br>
                     <b>7級風暴風半徑</b>：{t_data.get('r15')} km
@@ -345,13 +360,23 @@ try:
 except Exception as e:
     print(f"CWA JSON 警報解析失敗: {e}")
 
-# 非警報期間：自動由 KML 資料自動抓取即時動態備援
+# 非警報期間：自動抓取即時動態與中心經緯度座標作為備援
 if not alert_html:
     fallback_details = []
+    latest_coords_str = ""
+
+    # 從 CWA W-C0034-002 提取最即時中心點座標與動態
     if cwa_002_root is not None:
         for pm in cwa_002_root.findall(".//kml:Placemark", ns):
             desc_elem = pm.find("kml:description", ns)
             name_elem = pm.find("kml:name", ns)
+            pt_coords = pm.find(".//kml:Point/kml:coordinates", ns)
+
+            if pt_coords is not None and pt_coords.text and not latest_coords_str:
+                p_parts = pt_coords.text.strip().split(",")
+                if len(p_parts) >= 2:
+                    latest_coords_str = f"北緯 {float(p_parts[1]):.1f}°，東經 {float(p_parts[0]):.1f}°"
+
             if desc_elem is not None and desc_elem.text:
                 pm_name = (
                     name_elem.text
@@ -366,6 +391,13 @@ if not alert_html:
         for pm in ncdr_root.findall(".//kml:Placemark", ns):
             desc_elem = pm.find("kml:description", ns)
             name_elem = pm.find("kml:name", ns)
+            pt_coords = pm.find(".//kml:Point/kml:coordinates", ns)
+
+            if pt_coords is not None and pt_coords.text and not latest_coords_str:
+                p_parts = pt_coords.text.strip().split(",")
+                if len(p_parts) >= 2:
+                    latest_coords_str = f"北緯 {float(p_parts[1]):.1f}°，東經 {float(p_parts[0]):.1f}°"
+
             if desc_elem is not None and desc_elem.text:
                 pm_name = (
                     name_elem.text
@@ -376,12 +408,19 @@ if not alert_html:
                     f"<b>【{pm_name}】</b><br>{desc_elem.text}"
                 )
 
+    pos_banner = (
+        f"<div style='background:#e9ecef; padding:6px; border-radius:4px; margin-bottom:6px;'><b style='color:#d9534f;'>最新中心位置：</b><b>{latest_coords_str}</b></div>"
+        if latest_coords_str
+        else ""
+    )
+
     if fallback_details:
         unique_details = list(dict.fromkeys(fallback_details))[:4]
         alert_html = f"""
         <h4 style="margin:0 0 5px 0; color:#0275d8;">即時颱風消息（非警報期間）</h4>
         <small style="color:gray;">註：氣象署尚未發布陸/海警報，以下為洋面最新颱風動態</small>
         <hr style="margin:5px 0;">
+        {pos_banner}
         {"<br><hr style='margin:5px 0;'>".join(unique_details)}
         """
     else:
@@ -391,14 +430,13 @@ if not alert_html:
         """
 
 
-# --- [分頁 2] 風力預測 ---
+# --- [分頁 2 & 3] 風力與雨量預測 ---
 print("正在讀取 CWA 風力預測 (F-C0034-005)...")
 f_005_url = f"https://opendata.cwa.gov.tw/fileapi/v1/opendataapi/F-C0034-005?Authorization={CWA_API_KEY}&downloadType=WEB&format=JSON"
 wind_html = parse_cwa_forecast_xml(
     get_cwa_product_xml(f_005_url), forecast_type="風力"
 )
 
-# --- [分頁 3] 總雨量預測 ---
 print("正在讀取 CWA 總雨量預測 (F-C0034-007)...")
 f_007_url = f"https://opendata.cwa.gov.tw/fileapi/v1/opendataapi/F-C0034-007?Authorization={CWA_API_KEY}&downloadType=WEB&format=JSON"
 rain_html = parse_cwa_forecast_xml(
@@ -416,7 +454,7 @@ tab_panel_html = f"""
     <b style="font-size:15px; color:#333; margin-bottom:6px;">中央氣象署 (CWA) 颱風預報總覽</b>
     
     <div style="display: flex; border-bottom: 2px solid #337ab7; margin-bottom: 8px;">
-        <button onclick="switchTab('tab-alert')" id="btn-alert" style="flex:1; padding:6px; border:none; background:#337ab7; color:white; font-weight:bold; cursor:pointer; border-radius:4px 4px 0 0;">颱風警報</button>
+        <button onclick="switchTab('tab-alert')" id="btn-alert" style="flex:1; padding:6px; border:none; background:#337ab7; color:white; font-weight:bold; cursor:pointer; border-radius:4px 4px 0 0;">颱風消息/位置</button>
         <button onclick="switchTab('tab-wind')" id="btn-wind" style="flex:1; padding:6px; border:none; background:#eee; color:#333; font-weight:bold; cursor:pointer; border-radius:4px 4px 0 0;">風力預測</button>
         <button onclick="switchTab('tab-rain')" id="btn-rain" style="flex:1; padding:6px; border:none; background:#eee; color:#333; font-weight:bold; cursor:pointer; border-radius:4px 4px 0 0;">雨量預測</button>
     </div>
@@ -469,4 +507,6 @@ folium.LayerControl(position="topright", collapsed=False).add_to(m)
 
 output_file = "index.html"
 m.save(output_file)
-print(f"地圖已成功更新，並完成颱風結構化數據提取：{output_file}")
+print(
+    f"地圖已成功更新，並完成颱風中心位置座標提取顯示：{output_file}"
+)
