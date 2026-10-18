@@ -518,7 +518,7 @@ m.get_root().html.add_child(folium.Element(legend_html))
 fg_cwa_wsp.add_to(m)
 fg_cwa_route.add_to(m)
 fg_ncdr.add_to(m)
-
+    
 folium.LayerControl(position="topright", collapsed=False).add_to(m)
 
 output_file = "index.html"
