@@ -192,297 +192,84 @@ print("正在讀取 CWA 暴風圈侵襲機率 (W-C0034-003)...")
 cwa_003_url = f"https://opendata.cwa.gov.tw/fileapi/v1/opendataapi/W-C0034-003?Authorization={CWA_API_KEY}&downloadType=WEB&format=KMZ"
 parse_and_add_cwa_003(fetch_kml_from_kmz(cwa_003_url), fg_cwa_wsp)
 
+# --- 輔助函式：取得 CWA Product XML (用於風雨預測) ---
+def get_cwa_product_xml(api_url):
+    try:
+        res = requests.get(api_url, timeout=15)
+        res.raise_for_status()
+        product_url = None
+        try:
+            data = res.json()
+            product_url = data.get("cwaopendata", {}).get("Dataset", {}).get("Resource", {}).get("ProductURL")
+        except Exception:
+            root = ET.fromstring(res.content)
+            for elem in root.iter():
+                if elem.tag.endswith("ProductURL") and elem.text:
+                    product_url = elem.text.strip()
+                    break
+        if product_url:
+            xml_res = requests.get(product_url, timeout=15)
+            xml_res.raise_for_status()
+            return xml_res.content
+        else:
+            return res.content
+    except Exception as e:
+        print(f"取得 CWA Product XML 失敗 ({api_url}): {e}")
+        return None
 
-# --- [API 擴充] 日本氣象廳 (JMA) 颱風資訊與警報／注意報 ---
-# 注意：JMA 並不是發布一個統一的「颱風警報」，而是依地區發布暴風、波浪、高潮、大雨、土砂災害等警報／注意報。
-# 2026-05-29 起 JMA 警報資料改用 r8 格式；避免繼續讀取舊的 /data/warning/ 路徑。
-JMA_TYPHOON_INFO_URL = "https://www.jma.go.jp/bosai/typhoon/data/TC.json"
-JMA_WARNING_MAP_URL = "https://www.jma.go.jp/bosai/warning/data/r8/map.json"
-JMA_AREA_URL = "https://www.jma.go.jp/bosai/common/const/area.json"
-JMA_WARNING_PAGE_URL = "https://www.jma.go.jp/bosai/warning/"
-JMA_TYPHOON_PAGE_URL = "https://www.jma.go.jp/bosai/map.html?contents=typhoon"
-
-# 目前 JMA R8 警報代碼。這裡只顯示與颱風較相關的類別。
-# 數值參考 JMA 網站目前使用的 warningCode/r8 對照表，代碼一律以字串處理。
-JMA_TYPHOON_WARNING_LABELS = {
-    "33": ("大雨特別警報（第 5 級）", 5),
-    "43": ("大雨危險警報（第 4 級）", 4),
-    "03": ("大雨警報（第 3 級）", 3),
-    "10": ("大雨注意報（第 2 級）", 2),
-    "39": ("土砂災害特別警報（第 5 級）", 5),
-    "49": ("土砂災害危險警報（第 4 級）", 4),
-    "09": ("土砂災害警報（第 3 級）", 3),
-    "29": ("土砂災害注意報（第 2 級）", 2),
-    "38": ("高潮特別警報（第 5 級）", 5),
-    "48": ("高潮危險警報（第 4 級）", 4),
-    "08": ("高潮警報（第 3 級）", 3),
-    "19": ("高潮注意報（第 2 級）", 2),
-    "35": ("暴風特別警報", 5),
-    "05": ("暴風警報", 3),
-    "15": ("強風注意報", 2),
-    "37": ("波浪特別警報", 5),
-    "07": ("波浪警報", 3),
-    "16": ("波浪注意報", 2),
-}
+# --- 輔助函式：解析風力與雨量預測 XML ---
+def parse_cwa_forecast_xml(xml_content, forecast_type="風力"):
+    if not xml_content:
+        return f"<p style='color:gray;'>目前無發布最新{forecast_type}預測資料</p>"
+    try:
+        root = ET.fromstring(xml_content)
+        rows = []
+        for loc in root.iter():
+            if loc.tag.endswith("location") or loc.tag.endswith("Location"):
+                loc_name = ""
+                infos = []
+                for child in loc:
+                    tag_name = child.tag.split("}")[-1]
+                    txt = (child.text or "").strip()
+                    if "location" in tag_name.lower() or "name" in tag_name.lower() or "county" in tag_name.lower():
+                        loc_name = txt
+                    elif txt:
+                        infos.append(f"<b>{tag_name}</b>: {txt}")
+                if loc_name and infos:
+                    rows.append(f"<tr><td style='padding:4px; border-bottom:1px solid #eee; font-weight:bold; white-space:nowrap;'>{loc_name}</td>"
+                                f"<td style='padding:4px; border-bottom:1px solid #eee;'>{' | '.join(infos)}</td></tr>")
+        if rows:
+            return f"<table style='width:100%; border-collapse:collapse; font-size:12px;'>{''.join(rows)}</table>"
+        return f"<p style='color:gray;'>非警報發布期間，暫無最新{forecast_type}資料。</p>"
+    except Exception as e:
+        return f"<p style='color:red;'>解析{forecast_type}預測失敗: {e}</p>"
 
 
+# --- [API 擴充] 日本氣象廳 (JMA) 颱風資訊 ---
+print("正在讀取 JMA (日本氣象廳) 颱風資料...")
 def fetch_jma_info():
-    """取得 JMA 目前活躍颱風清單。"""
+    jma_url = "https://www.jma.go.jp/bosai/typhoon/data/TC.json"
     try:
-        res = requests.get(JMA_TYPHOON_INFO_URL, timeout=12)
+        res = requests.get(jma_url, timeout=10)
         if res.status_code == 404:
-            return (
-                "<p style='color:green;padding:10px;font-weight:bold;'>"
-                "目前 JMA 颱風清單沒有可顯示的活躍颱風。</p>"
-            )
+            return "<p style='color:green; padding: 10px; font-weight:bold;'>✅ 目前西太平洋無活躍颱風，日本氣象廳 (JMA) 暫無發布警報。</p>"
         res.raise_for_status()
         data = res.json()
-        if not isinstance(data, list) or not data:
-            return "<p style='color:gray;'>目前 JMA 沒有回傳活躍颱風資料。</p>"
-
-        html_output = [
-            "<h4 style='margin:4px 0;color:#245580;'>日本氣象廳目前颱風資訊</h4>",
-            "<ul style='padding-left:20px;'>",
-        ]
+        if not data:
+            return "<p style='color:gray;'>目前日本氣象廳 (JMA) 無發布活躍的颱風資訊。</p>"
+        
+        html_output = "<ul style='padding-left: 20px;'>"
         for tc in data:
-            if not isinstance(tc, dict):
-                continue
-            name_obj = tc.get("name", {})
-            if not isinstance(name_obj, dict):
-                name_obj = {}
-            name_en = html.escape(str(name_obj.get("romaji") or tc.get("id") or "未知名稱"))
-            name_kana = html.escape(str(name_obj.get("kana") or ""))
-            time_dt = html.escape(str(tc.get("dateTime") or "未知時間"))
-            html_output.append(
-                "<li style='margin-bottom:8px;'>"
-                f"<b>{name_en} ({name_kana})</b><br>"
-                f"<small style='color:#666;'>JMA 資料時間：{time_dt}</small></li>"
-            )
-        html_output.append("</ul>")
-        html_output.append(
-            f"<p style='font-size:11px;color:#666;'>"
-            f"更多資訊：<a href='{JMA_TYPHOON_PAGE_URL}' target='_blank' rel='noopener'>"
-            "JMA 官方颱風地圖</a></p>"
-        )
-        return "".join(html_output)
+            name_en = tc.get('name', {}).get('romaji', '未知名稱')
+            name_kana = tc.get('name', {}).get('kana', '')
+            time_dt = tc.get('dateTime', '未知時間')
+            html_output += f"<li style='margin-bottom:8px;'><b>{name_en} ({name_kana})</b><br><small style='color:#666;'>JMA 更新時間: {time_dt}</small></li>"
+        html_output += "</ul><div style='font-size:11px; color:gray; margin-top:10px;'>* 日本氣象廳颱風預測路徑已整合顯示於地圖上(藍色線條)。上方為 JMA 官方 API 即時回傳之活躍颱風列表。</div>"
+        return html_output
     except Exception as e:
-        return (
-            "<p style='color:#b94a48;'>無法取得 JMA 颱風清單："
-            f"{html.escape(str(e))}</p>"
-            f"<p><a href='{JMA_TYPHOON_PAGE_URL}' target='_blank' rel='noopener'>"
-            "前往 JMA 官方颱風地圖</a></p>"
-        )
-
-
-def fetch_jma_area_names():
-    """下載 JMA 地區代碼表，回傳代碼名稱及市町村到較大區域的對照。"""
-    try:
-        res = requests.get(JMA_AREA_URL, timeout=12)
-        res.raise_for_status()
-        data = res.json()
-        names = {}
-        class20_to_class10 = {}
-        if isinstance(data, dict):
-            # class20s 約為市町村等細部區域；class10s 為較大的區域。
-            for group_name in ("class20s", "class15s", "class10s", "offices"):
-                group = data.get(group_name, {})
-                if isinstance(group, dict):
-                    for code, info in group.items():
-                        if isinstance(info, dict) and info.get("name"):
-                            names[str(code)] = str(info["name"])
-
-            class10s = data.get("class10s", {})
-            class15s = data.get("class15s", {})
-            if isinstance(class10s, dict) and isinstance(class15s, dict):
-                for class10_code, class10_info in class10s.items():
-                    if not isinstance(class10_info, dict):
-                        continue
-                    for class15_code in class10_info.get("children", []):
-                        class15_info = class15s.get(str(class15_code), {})
-                        if not isinstance(class15_info, dict):
-                            continue
-                        for class20_code in class15_info.get("children", []):
-                            class20_to_class10[str(class20_code)] = str(class10_code)
-        return names, class20_to_class10
-    except Exception as e:
-        print(f"無法取得 JMA 地區名稱表，將改顯示區域代碼：{e}")
-        return {}, {}
-
-
-def fetch_jma_warning_html():
-    """抓取 JMA 全日本現行警報／注意報，篩選颱風相關類別並整理成 HTML。"""
-    try:
-        res = requests.get(JMA_WARNING_MAP_URL, timeout=15)
-        res.raise_for_status()
-        reports = res.json()
-        if not isinstance(reports, list):
-            raise ValueError("JMA 警報 API 回傳格式不是預期的 JSON 陣列")
-
-        area_names, class20_to_class10 = fetch_jma_area_names()
-        inactive_statuses = {
-            "解除", "発表警報・注意報はなし", "発表なし", "なし", "解除済み"
-        }
-        # 優先採用 class20Items（約為市町村等細部區域）；只有某警報代碼沒有細部區域資料時，
-        # 才以 class10Items（較大的區域）補足，避免父區域與子區域重複列示。
-        current_by_level = {"class20Items": {}, "class10Items": {}}
-
-        for report in reports:
-            if not isinstance(report, dict):
-                continue
-            report_time = str(report.get("reportDatetime") or "")
-            warning = report.get("warning", {})
-            if not isinstance(warning, dict):
-                continue
-
-            for item_key in ("class20Items", "class10Items"):
-                items = warning.get(item_key, [])
-                if not isinstance(items, list):
-                    continue
-                for item in items:
-                    if not isinstance(item, dict):
-                        continue
-                    area_code = str(item.get("areaCode") or "")
-                    if not area_code:
-                        continue
-                    area_name = area_names.get(area_code, f"區域代碼 {area_code}")
-                    kinds = item.get("kinds", [])
-                    if not isinstance(kinds, list):
-                        continue
-                    for kind in kinds:
-                        if not isinstance(kind, dict):
-                            continue
-                        raw_code = kind.get("code")
-                        status = str(kind.get("status") or "")
-                        if raw_code is None or status in inactive_statuses:
-                            continue
-                        code = str(raw_code).zfill(2)
-                        if code not in JMA_TYPHOON_WARNING_LABELS:
-                            continue
-
-                        # 同一區域／警報在較新的電文中可能被解除；用時間較新的狀態覆寫舊狀態。
-                        target = current_by_level[item_key]
-                        key = (area_code, code)
-                        previous = target.get(key)
-                        if previous is None or report_time >= previous["time"]:
-                            target[key] = {
-                                "area": area_name,
-                                "status": status,
-                                "time": report_time,
-                                "code": code,
-                            }
-
-        # 某一細部區域若最新狀態是「解除」，要保留這個解除狀態以覆寫舊的發表狀態。
-        # 上方先略過解除狀態，因此再依每一種類報文中的「解除」訊息做一次狀態覆寫。
-        # 直接重新遍歷解除項目，確保舊警報不會在畫面上殘留。
-        for report in reports:
-            if not isinstance(report, dict):
-                continue
-            report_time = str(report.get("reportDatetime") or "")
-            warning = report.get("warning", {})
-            if not isinstance(warning, dict):
-                continue
-            for item_key in ("class20Items", "class10Items"):
-                items = warning.get(item_key, [])
-                if not isinstance(items, list):
-                    continue
-                for item in items:
-                    if not isinstance(item, dict):
-                        continue
-                    area_code = str(item.get("areaCode") or "")
-                    if not area_code:
-                        continue
-                    for kind in item.get("kinds", []) if isinstance(item.get("kinds", []), list) else []:
-                        if not isinstance(kind, dict) or kind.get("code") is None:
-                            continue
-                        code = str(kind.get("code")).zfill(2)
-                        status = str(kind.get("status") or "")
-                        if code not in JMA_TYPHOON_WARNING_LABELS or status not in inactive_statuses:
-                            continue
-                        target = current_by_level[item_key]
-                        key = (area_code, code)
-                        previous = target.get(key)
-                        if previous is None or report_time >= previous["time"]:
-                            target[key] = {
-                                "area": area_names.get(area_code, f"區域代碼 {area_code}"),
-                                "status": status,
-                                "time": report_time,
-                                "code": code,
-                            }
-
-        # 先收集市町村層級，再用較大區域資料補足「該區域沒有市町村層級警報」的情況。
-        # 若同一個 class10 區域、同一警報已有細部區域資料，就不再重複顯示父區域名稱。
-        active_by_code = {}
-        active_class20_parent_pairs = set()
-        for (area_code, code), entry in current_by_level["class20Items"].items():
-            if entry["status"] in inactive_statuses:
-                continue
-            active_by_code.setdefault(code, set()).add(entry["area"])
-            parent_code = class20_to_class10.get(area_code)
-            if parent_code:
-                active_class20_parent_pairs.add((parent_code, code))
-
-        for (area_code, code), entry in current_by_level["class10Items"].items():
-            if entry["status"] in inactive_statuses:
-                continue
-            if (area_code, code) in active_class20_parent_pairs:
-                continue
-            active_by_code.setdefault(code, set()).add(entry["area"])
-
-        if not active_by_code:
-            return (
-                "<h4 style='margin:4px 0;color:#245580;'>JMA 日本颱風相關警報／注意報</h4>"
-                "<p style='color:green;font-weight:bold;'>"
-                "目前未從 JMA 資料中偵測到大雨、土砂災害、高潮、暴風或波浪等相關警報／注意報。</p>"
-                "<p style='font-size:11px;color:#666;'>"
-                "這不代表沒有颱風或沒有其他種類的天氣注意報；請以 JMA 官方資訊為準。</p>"
-                f"<p><a href='{JMA_WARNING_PAGE_URL}' target='_blank' rel='noopener'>"
-                "查看 JMA 官方警報／注意報頁面</a></p>"
-            )
-
-        # 排序：特別警報／危險警報優先，其次警報，最後注意報。
-        sort_codes = sorted(
-            active_by_code,
-            key=lambda code: (-JMA_TYPHOON_WARNING_LABELS[code][1], JMA_TYPHOON_WARNING_LABELS[code][0])
-        )
-        parts = [
-            "<h4 style='margin:4px 0;color:#245580;'>JMA 日本颱風相關警報／注意報</h4>",
-            "<p style='font-size:11px;color:#666;margin-top:0;'>"
-            "篩選項目：大雨、土砂災害、高潮、暴風及波浪。區域名稱來自 JMA 官方區域代碼表。</p>",
-            "<ul style='padding-left:20px;'>",
-        ]
-        for code in sort_codes:
-            label, level = JMA_TYPHOON_WARNING_LABELS[code]
-            area_list = sorted(active_by_code[code])
-            visible_areas = area_list[:10]
-            area_text = "、".join(html.escape(name) for name in visible_areas)
-            if len(area_list) > len(visible_areas):
-                area_text += f" 等 {len(area_list)} 個區域"
-            color = "#b30000" if level >= 4 else ("#d9534f" if level >= 3 else "#8a6d3b")
-            parts.append(
-                "<li style='margin-bottom:9px;'>"
-                f"<b style='color:{color};'>{html.escape(label)}</b><br>"
-                f"<span style='color:#333;'>{area_text}</span></li>"
-            )
-        parts.append("</ul>")
-        parts.append(
-            f"<p style='font-size:11px;color:#666;'>"
-            f"資料來源：<a href='{JMA_WARNING_PAGE_URL}' target='_blank' rel='noopener'>"
-            "JMA 官方警報／注意報</a>；資料更新時間依各警報報文為準。</p>"
-        )
-        return "".join(parts)
-
-    except Exception as e:
-        return (
-            "<h4 style='margin:4px 0;color:#245580;'>JMA 日本颱風相關警報／注意報</h4>"
-            "<p style='color:#b94a48;'>目前無法讀取 JMA 警報資料。請直接查看 JMA 官方頁面。</p>"
-            f"<p style='font-size:11px;color:#666;'>錯誤資訊：{html.escape(str(e))}</p>"
-            f"<p><a href='{JMA_WARNING_PAGE_URL}' target='_blank' rel='noopener'>"
-            "前往 JMA 官方警報／注意報頁面</a></p>"
-        )
-
+        return f"<p style='color:red;'>無法取得 JMA 資訊 (錯誤: {e})</p>"
 
 jma_html = fetch_jma_info()
-jma_warning_html = fetch_jma_warning_html()
 
 
 # --- CWA 警報文字解析 ---
@@ -522,65 +309,108 @@ except Exception as e:
 if not alert_html:
     alert_html = """
     <h4 style="margin:0 0 5px 0; color:#0275d8;">即時颱風消息</h4>
-    <p style="color:gray;">目前臺灣尚未發布颱風警報。請參考地圖上之各國預測路徑及切換 JMA 分頁查看日本最新動態。</p>
+    <p style="color:gray;">目前臺灣尚未發布颱風警報。請參考地圖上之各國預測路徑及切換其他分頁查看最新動態。</p>
     """
+
+# --- [分頁 2 & 3] 風力與雨量預測 ---
+print("正在讀取 CWA 風力預測 (F-C0034-005)...")
+f_005_url = f"https://opendata.cwa.gov.tw/fileapi/v1/opendataapi/F-C0034-005?Authorization={CWA_API_KEY}&downloadType=WEB&format=JSON"
+wind_html = parse_cwa_forecast_xml(get_cwa_product_xml(f_005_url), forecast_type="風力")
+
+print("正在讀取 CWA 總雨量預測 (F-C0034-007)...")
+f_007_url = f"https://opendata.cwa.gov.tw/fileapi/v1/opendataapi/F-C0034-007?Authorization={CWA_API_KEY}&downloadType=WEB&format=JSON"
+rain_html = parse_cwa_forecast_xml(get_cwa_product_xml(f_007_url), forecast_type="總雨量")
 
 # --- 介面面板 ---
 tab_panel_html = f"""
-<div style="position: fixed; bottom: 30px; right: 30px; width: 440px; height: 500px;
-     background-color: white; border: 2px solid #337ab7; z-index: 9999; font-size: 13px;
+<div style="position: fixed; bottom: 30px; right: 30px; width: 440px; height: 500px; 
+     background-color: white; border:2px solid #337ab7; z-index:9999; font-size:13px;
      padding: 10px; border-radius: 8px; box-shadow: 0 0 10px rgba(0,0,0,0.3); opacity: 0.96;
-     display: flex; flex-direction: column; box-sizing: border-box;">
-
-    <div style="display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 6px;">
-        <b style="font-size: 15px; color: #333;">颱風即時動態與各國預測整合</b>
+     display: flex; flex-direction: column;">
+    
+    <div style="display: flex; justify-content: space-between; align-items: baseline; margin-bottom:6px;">
+        <b style="font-size:15px; color:#333;">颱風即時動態與各國預測整合</b>
     </div>
-    <div style="font-size: 11px; color: #666; margin-bottom: 8px; border-bottom: 1px solid #ccc; padding-bottom: 5px;">
+    <div style="font-size:11px; color:#666; margin-bottom:8px; border-bottom:1px solid #ccc; padding-bottom:5px;">
         <i class="fa fa-clock"></i> 系統資料更新時間：<b>{current_time_str}</b>
     </div>
-
-    <div style="display: flex; border-bottom: 2px solid #337ab7; margin-bottom: 8px; font-size: 12px; flex-wrap: wrap; gap: 4px; padding-bottom: 4px;">
-        <button onclick="switchTab('tab-alert')" id="btn-alert"
-                style="flex: 1 1 auto; padding: 6px; border: none; background: #337ab7; color: white; border-radius: 4px; cursor: pointer;">
-            臺灣氣象署警報
-        </button>
-        <button onclick="switchTab('tab-jma')" id="btn-jma"
-                style="flex: 1 1 auto; padding: 6px; border: none; background: #eee; color: #333; border-radius: 4px; cursor: pointer;">
-            日本氣象廳 JMA
-        </button>
+    
+    <div style="display: flex; border-bottom: 2px solid #337ab7; margin-bottom: 8px; font-size:12px; flex-wrap: wrap; gap: 4px; padding-bottom: 4px;">
+        <button onclick="switchTab('tab-alert')" id="btn-alert" style="flex:1 1 auto; padding:6px; border:none; background:#337ab7; color:white; font-weight:bold; cursor:pointer; border-radius:4px;">CWA 動態</button>
+        <button onclick="switchTab('tab-cwa-web')" id="btn-cwa-web" style="flex:1 1 auto; padding:6px; border:none; background:#eee; color:#333; font-weight:bold; cursor:pointer; border-radius:4px;">CWA 官網</button>
+        <button onclick="switchTab('tab-jma')" id="btn-jma" style="flex:1 1 auto; padding:6px; border:none; background:#eee; color:#333; font-weight:bold; cursor:pointer; border-radius:4px;">JMA 動態</button>
+        <button onclick="switchTab('tab-jma-web')" id="btn-jma-web" style="flex:1 1 auto; padding:6px; border:none; background:#eee; color:#333; font-weight:bold; cursor:pointer; border-radius:4px;">JMA 官網</button>
+        <button onclick="switchTab('tab-wind')" id="btn-wind" style="flex:1 1 auto; padding:6px; border:none; background:#eee; color:#333; font-weight:bold; cursor:pointer; border-radius:4px;">風力</button>
+        <button onclick="switchTab('tab-rain')" id="btn-rain" style="flex:1 1 auto; padding:6px; border:none; background:#eee; color:#333; font-weight:bold; cursor:pointer; border-radius:4px;">雨量</button>
     </div>
 
-    <div id="tab-alert" style="display: block; flex: 1; min-height: 0; overflow-y: auto; line-height: 1.6;">
-        {alert_html}
+    <div id="tab-alert" class="tab-content" style="overflow-y:auto; flex:1;">{alert_html}</div>
+    
+    <div id="tab-cwa-web" class="tab-content" style="display:none; overflow-y:auto; flex:1; position: relative;">
+        <div style="margin-bottom: 5px; text-align: right;">
+            <a href="https://www.cwa.gov.tw/V8/C/P/Typhoon/TY_NEWS.html" target="_blank" style="font-size:12px; color:#337ab7; text-decoration:underline;">&#8599; 另開新視窗檢視</a>
+        </div>
+        <iframe src="https://www.cwa.gov.tw/V8/C/P/Typhoon/TY_NEWS.html" width="100%" height="90%" style="border:1px solid #ccc; border-radius: 4px;"></iframe>
     </div>
-    <div id="tab-jma" style="display: none; flex: 1; min-height: 0; overflow-y: auto; line-height: 1.6;">
-        {jma_html}
-        <hr style="border:0;border-top:1px solid #ddd;margin:10px 0;">
-        {jma_warning_html}
+
+    <div id="tab-jma" class="tab-content" style="display:none; overflow-y:auto; flex:1;">{jma_html}</div>
+    
+    <div id="tab-jma-web" class="tab-content" style="display:none; overflow-y:auto; flex:1; position: relative;">
+        <div style="margin-bottom: 5px; text-align: right;">
+            <a href="https://www.data.jma.go.jp/multi/cyclone/index.html?lang=cn_zt" target="_blank" style="font-size:12px; color:#337ab7; text-decoration:underline;">&#8599; 另開新視窗檢視</a>
+        </div>
+        <iframe src="https://www.data.jma.go.jp/multi/cyclone/index.html?lang=cn_zt" width="100%" height="90%" style="border:1px solid #ccc; border-radius: 4px;"></iframe>
     </div>
+
+    <div id="tab-wind" class="tab-content" style="display:none; overflow-y:auto; flex:1;">{wind_html}</div>
+    <div id="tab-rain" class="tab-content" style="display:none; overflow-y:auto; flex:1;">{rain_html}</div>
 </div>
 
 <script>
 function switchTab(tabId) {{
-    const tabIds = ['tab-alert', 'tab-jma'];
-    tabIds.forEach(function(id) {{
-        const panel = document.getElementById(id);
-        const button = document.getElementById(id === 'tab-alert' ? 'btn-alert' : 'btn-jma');
-        const active = id === tabId;
-        if (panel) panel.style.display = active ? 'block' : 'none';
-        if (button) {{
-            button.style.background = active ? '#337ab7' : '#eee';
-            button.style.color = active ? 'white' : '#333';
+    document.querySelectorAll('.tab-content').forEach(el => el.style.display = 'none');
+    document.getElementById(tabId).style.display = 'block';
+    
+    ['alert', 'cwa-web', 'jma', 'jma-web', 'wind', 'rain'].forEach(id => {{
+        let btn = document.getElementById('btn-' + id);
+        if('tab-' + id === tabId) {{
+            btn.style.background = '#337ab7';
+            btn.style.color = 'white';
+        }} else {{
+            btn.style.background = '#eee';
+            btn.style.color = '#333';
         }}
     }});
 }}
 </script>
 """
-
-# 將資訊面板加入 Folium 地圖，並顯示圖層切換控制。
 m.get_root().html.add_child(folium.Element(tab_panel_html))
-folium.LayerControl(collapsed=False).add_to(m)
+
+# 圖例
+legend_html = """
+<div style="position: fixed; bottom: 30px; left: 30px; width: 180px; 
+     background-color: white; border:2px solid gray; z-index:9999; font-size:12px;
+     padding: 10px; border-radius: 6px; opacity: 0.95;">
+  <b>各國與 CWA 圖例</b><br>
+  <i class="fa fa-minus" style="color:red"></i> 台灣 (CWA/NCDR)<br>
+  <i class="fa fa-minus" style="color:blue"></i> 日本 (JMA)<br>
+  <i class="fa fa-minus" style="color:green"></i> 美國 (JTWC)<br>
+  <i class="fa fa-minus" style="color:purple"></i> 韓國 (KMA)<br>
+  <i class="fa fa-minus" style="color:orange"></i> 中國 (CMA)<br>
+  <span style="color:#d9534f; font-weight:bold;">- - -</span> 颱風歷史移動軌跡<br>
+  <i class="fa fa-square" style="color:#d9534f; opacity:0.6;"></i> CWA 暴風圈/潛勢區<br>
+  <i class="fa fa-square" style="color:purple; opacity:0.5;"></i> CWA 侵襲機率區
+</div>
+"""
+m.get_root().html.add_child(folium.Element(legend_html))
+
+# 圖層疊加順序
+fg_cwa_wsp.add_to(m)
+fg_cwa_route.add_to(m)
+fg_ncdr.add_to(m)
+
+folium.LayerControl(position="topright", collapsed=False).add_to(m)
 
 output_file = "index.html"
 m.save(output_file)
-print(f"地圖已輸出：{output_file}")
+print(f"地圖已成功更新，已將所有功能與路徑完美整合：{output_file}")
