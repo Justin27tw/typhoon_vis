@@ -9,8 +9,8 @@ import datetime
 # 中央氣象署 (CWA) API 授權碼
 CWA_API_KEY = "CWA-77A723AE-21B7-4AD9-A9DE-661D15AE3823"
 
-# 取得現在的更新時間
-current_time_str = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+# 取得現在的更新時間 (轉換為台灣時間 UTC+8)
+current_time_str = (datetime.datetime.utcnow() + datetime.timedelta(hours=8)).strftime("%Y-%m-%d %H:%M:%S")
 
 # 1. 初始化 Folium 互動地圖
 m = folium.Map(
@@ -97,16 +97,29 @@ def parse_and_add_cwa_002(root_elem, target_group):
                                     tooltip=f"<b>{name}</b>",
                                     popup=folium.Popup(f"<b>{name}</b><br>{desc}", max_width=300)).add_to(target_group)
 
-        # 3. 點位 Point
+        # 3. 點位 Point (圓點 + 文字標籤)
         point_coords = pm.find(".//kml:Point/kml:coordinates", ns)
         if point_coords is not None and point_coords.text:
             parts = point_coords.text.strip().split(",")
             if len(parts) >= 2:
                 lon, lat = float(parts[0]), float(parts[1])
                 pos_str = f"中心位置：北緯 {lat:.1f}°, 東經 {lon:.1f}°"
+                
+                # 繪製點位標記
                 folium.CircleMarker(location=[lat, lon], radius=4, color="#d9534f", fill=True,
                                     fill_color="#d9534f", fill_opacity=0.9, tooltip=f"{name} ({pos_str})",
                                     popup=folium.Popup(f"<b>{name}</b><br><b>{pos_str}</b><br>{desc}", max_width=300)).add_to(target_group)
+                
+                # 【新增】使用 DivIcon 在地圖上繪製如 CWA 的白底時間標籤
+                if "日" in name or "時" in name or "颱風" in name:
+                    folium.map.Marker(
+                        [lat, lon],
+                        icon=folium.DivIcon(
+                            icon_size=(0,0),
+                            icon_anchor=(0,0),
+                            html=f'<div style="background-color: white; border: 1px solid #555; border-radius: 4px; padding: 2px 4px; font-size: 11px; font-weight: bold; color: #333; white-space: nowrap; transform: translate(8px, -18px); box-shadow: 1px 1px 3px rgba(0,0,0,0.3);">{name}</div>'
+                        )
+                    ).add_to(target_group)
 
 # 專門解析 CWA 暴風圈侵襲機率 (W-C0034-003)
 def parse_and_add_cwa_003(root_elem, target_group):
@@ -187,6 +200,8 @@ def fetch_jma_info():
     jma_url = "https://www.jma.go.jp/bosai/typhoon/data/TC.json"
     try:
         res = requests.get(jma_url, timeout=10)
+        if res.status_code == 404:
+            return "<p style='color:green; padding: 10px; font-weight:bold;'>✅ 目前西太平洋無活躍颱風，日本氣象廳 (JMA) 暫無發布警報。</p>"
         res.raise_for_status()
         data = res.json()
         if not data:
@@ -194,7 +209,6 @@ def fetch_jma_info():
         
         html_output = "<ul style='padding-left: 20px;'>"
         for tc in data:
-            # 解析 JMA 的 JSON 格式
             name_en = tc.get('name', {}).get('romaji', '未知名稱')
             name_kana = tc.get('name', {}).get('kana', '')
             time_dt = tc.get('dateTime', '未知時間')
@@ -217,13 +231,32 @@ try:
         info_list = data.get("records", {}).get("info", [])
         if info_list:
             latest = info_list[0]
+            
+            # 1. 取得完整警戒區域 (移除原本的字數截斷)
+            areas = [a.get("areaDesc", "") for a in latest.get("area", [])]
+            area_str = "、".join(areas) if areas else "無"
+            
+            # 2. 深入解析警報詳細內容 (包含注意事項、降雨指引等)
+            desc_text = ""
+            for sec in latest.get("description", {}).get("section", []):
+                title = sec.get('title', '')
+                value = sec.get('value', '')
+                if title and value:
+                    desc_text += f"<b style='color:#337ab7;'>[{title}]</b> {value}<br><br>"
+            
+            # 3. 組裝豐富的 HTML
             alert_html = f"""
             <h4 style="margin:0 0 5px 0; color:#d9534f;">{latest.get('headline', '颱風警報')}</h4>
             <small>CWA 發布時間：{latest.get('effective', '')}</small><hr style="margin:5px 0;">
-            <b>【警戒區域】</b>：{ "、".join([a.get("areaDesc", "") for a in latest.get("area", [])])[:50] }...<br><br>
+            <div style="margin-bottom: 10px; font-size: 13px;">
+                <b>【警戒區域】</b>：{area_str}
+            </div>
+            <div style="font-size: 12px; line-height: 1.6; background-color: #f9f9f9; padding: 10px; border-radius: 6px; border-left: 4px solid #d9534f; overflow-wrap: break-word;">
+                {desc_text}
+            </div>
             """
-except Exception:
-    pass
+except Exception as e:
+    print(f"解析 CWA 警報時發生錯誤：{e}")
 
 if not alert_html:
     alert_html = """
@@ -233,7 +266,7 @@ if not alert_html:
 
 # --- 介面面板 ---
 tab_panel_html = f"""
-<div style="position: fixed; bottom: 30px; right: 30px; width: 380px; height: 400px; 
+<div style="position: fixed; bottom: 30px; right: 30px; width: 420px; height: 460px; 
      background-color: white; border:2px solid #337ab7; z-index:9999; font-size:13px;
      padding: 10px; border-radius: 8px; box-shadow: 0 0 10px rgba(0,0,0,0.3); opacity: 0.96;
      display: flex; flex-direction: column;">
@@ -305,4 +338,4 @@ folium.LayerControl(position="topright", collapsed=False).add_to(m)
 
 output_file = "index.html"
 m.save(output_file)
-print(f"地圖已成功更新，已加入更新時間與 JMA 資料：{output_file}")
+print(f"地圖已成功更新，已加入時間標籤與詳細警報內容：{output_file}")
