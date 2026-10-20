@@ -110,6 +110,7 @@ def parse_and_add_cwa_002(root_elem, target_group):
                                     fill_color="#d9534f", fill_opacity=0.9, tooltip=f"{name} ({pos_str})",
                                     popup=folium.Popup(f"<b>{name}</b><br><b>{pos_str}</b><br>{desc}", max_width=300)).add_to(target_group)
                 
+                # 使用 DivIcon 繪製白底時間標籤
                 if "日" in name or "時" in name or "颱風" in name:
                     folium.map.Marker(
                         [lat, lon],
@@ -192,6 +193,7 @@ print("正在讀取 CWA 暴風圈侵襲機率 (W-C0034-003)...")
 cwa_003_url = f"https://opendata.cwa.gov.tw/fileapi/v1/opendataapi/W-C0034-003?Authorization={CWA_API_KEY}&downloadType=WEB&format=KMZ"
 parse_and_add_cwa_003(fetch_kml_from_kmz(cwa_003_url), fg_cwa_wsp)
 
+
 # --- 輔助函式：取得 CWA Product XML (用於風雨預測) ---
 def get_cwa_product_xml(api_url):
     try:
@@ -220,7 +222,7 @@ def get_cwa_product_xml(api_url):
 # --- 輔助函式：解析風力與雨量預測 XML ---
 def parse_cwa_forecast_xml(xml_content, forecast_type="風力"):
     if not xml_content:
-        return f"<p style='color:gray;'>目前無發布最新{forecast_type}預測資料</p>"
+        return f"<p style='color:gray; padding:10px;'>目前無發布最新{forecast_type}預測資料</p>"
     try:
         root = ET.fromstring(xml_content)
         rows = []
@@ -240,12 +242,22 @@ def parse_cwa_forecast_xml(xml_content, forecast_type="風力"):
                                 f"<td style='padding:4px; border-bottom:1px solid #eee;'>{' | '.join(infos)}</td></tr>")
         if rows:
             return f"<table style='width:100%; border-collapse:collapse; font-size:12px;'>{''.join(rows)}</table>"
-        return f"<p style='color:gray;'>非警報發布期間，暫無最新{forecast_type}資料。</p>"
+        return f"<p style='color:gray; padding:10px;'>非警報發布期間，暫無最新{forecast_type}資料。</p>"
     except Exception as e:
-        return f"<p style='color:red;'>解析{forecast_type}預測失敗: {e}</p>"
+        return f"<p style='color:red; padding:10px;'>解析{forecast_type}預測失敗: {e}</p>"
 
 
-# --- [API 擴充] 日本氣象廳 (JMA) 颱風資訊 ---
+# --- [API 擴充] 風力與雨量預測 ---
+print("正在讀取 CWA 風力預測 (F-C0034-005)...")
+f_005_url = f"https://opendata.cwa.gov.tw/fileapi/v1/opendataapi/F-C0034-005?Authorization={CWA_API_KEY}&downloadType=WEB&format=JSON"
+wind_html = parse_cwa_forecast_xml(get_cwa_product_xml(f_005_url), forecast_type="風力")
+
+print("正在讀取 CWA 總雨量預測 (F-C0034-007)...")
+f_007_url = f"https://opendata.cwa.gov.tw/fileapi/v1/opendataapi/F-C0034-007?Authorization={CWA_API_KEY}&downloadType=WEB&format=JSON"
+rain_html = parse_cwa_forecast_xml(get_cwa_product_xml(f_007_url), forecast_type="總雨量")
+
+
+# --- [API 擴充] 日本氣象廳 (JMA) 颱風 JSON API 抓取 ---
 print("正在讀取 JMA (日本氣象廳) 颱風資料...")
 def fetch_jma_info():
     jma_url = "https://www.jma.go.jp/bosai/typhoon/data/TC.json"
@@ -256,7 +268,7 @@ def fetch_jma_info():
         res.raise_for_status()
         data = res.json()
         if not data:
-            return "<p style='color:gray;'>目前日本氣象廳 (JMA) 無發布活躍的颱風資訊。</p>"
+            return "<p style='color:gray; padding: 10px;'>目前日本氣象廳 (JMA) 無發布活躍的颱風資訊。</p>"
         
         html_output = "<ul style='padding-left: 20px;'>"
         for tc in data:
@@ -264,10 +276,10 @@ def fetch_jma_info():
             name_kana = tc.get('name', {}).get('kana', '')
             time_dt = tc.get('dateTime', '未知時間')
             html_output += f"<li style='margin-bottom:8px;'><b>{name_en} ({name_kana})</b><br><small style='color:#666;'>JMA 更新時間: {time_dt}</small></li>"
-        html_output += "</ul><div style='font-size:11px; color:gray; margin-top:10px;'>* 日本氣象廳颱風預測路徑已整合顯示於地圖上(藍色線條)。上方為 JMA 官方 API 即時回傳之活躍颱風列表。</div>"
+        html_output += "</ul><div style='font-size:11px; color:gray; margin-top:10px; padding-left:10px;'>* 日本氣象廳颱風預測路徑已整合顯示於地圖上(藍色線條)。上方為 JMA 官方 API 即時回傳之活躍颱風列表。</div>"
         return html_output
     except Exception as e:
-        return f"<p style='color:red;'>無法取得 JMA 資訊 (錯誤: {e})</p>"
+        return f"<p style='color:red; padding:10px;'>無法取得 JMA 資訊 (錯誤: {e})</p>"
 
 jma_html = fetch_jma_info()
 
@@ -308,34 +320,25 @@ except Exception as e:
 
 if not alert_html:
     alert_html = """
-    <h4 style="margin:0 0 5px 0; color:#0275d8;">即時颱風消息</h4>
+    <h4 style="margin:0 0 5px 0; color:#0275d8; padding-top: 5px;">即時颱風消息</h4>
     <p style="color:gray;">目前臺灣尚未發布颱風警報。請參考地圖上之各國預測路徑及切換其他分頁查看最新動態。</p>
     """
 
-# --- [分頁 2 & 3] 風力與雨量預測 ---
-print("正在讀取 CWA 風力預測 (F-C0034-005)...")
-f_005_url = f"https://opendata.cwa.gov.tw/fileapi/v1/opendataapi/F-C0034-005?Authorization={CWA_API_KEY}&downloadType=WEB&format=JSON"
-wind_html = parse_cwa_forecast_xml(get_cwa_product_xml(f_005_url), forecast_type="風力")
-
-print("正在讀取 CWA 總雨量預測 (F-C0034-007)...")
-f_007_url = f"https://opendata.cwa.gov.tw/fileapi/v1/opendataapi/F-C0034-007?Authorization={CWA_API_KEY}&downloadType=WEB&format=JSON"
-rain_html = parse_cwa_forecast_xml(get_cwa_product_xml(f_007_url), forecast_type="總雨量")
-
 # --- 介面面板 ---
 tab_panel_html = f"""
-<div style="position: fixed; bottom: 30px; right: 30px; width: 440px; height: 500px; 
-     background-color: white; border:2px solid #337ab7; z-index:9999; font-size:13px;
+<div style="position: fixed; bottom: 30px; right: 30px; width: 440px; height: 500px;
+     background-color: white; border: 2px solid #337ab7; z-index: 9999; font-size: 13px;
      padding: 10px; border-radius: 8px; box-shadow: 0 0 10px rgba(0,0,0,0.3); opacity: 0.96;
-     display: flex; flex-direction: column;">
-    
-    <div style="display: flex; justify-content: space-between; align-items: baseline; margin-bottom:6px;">
-        <b style="font-size:15px; color:#333;">颱風即時動態與各國預測整合</b>
+     display: flex; flex-direction: column; box-sizing: border-box;">
+
+    <div style="display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 6px;">
+        <b style="font-size: 15px; color: #333;">颱風即時動態與各國預測整合</b>
     </div>
-    <div style="font-size:11px; color:#666; margin-bottom:8px; border-bottom:1px solid #ccc; padding-bottom:5px;">
+    <div style="font-size: 11px; color: #666; margin-bottom: 8px; border-bottom: 1px solid #ccc; padding-bottom: 5px;">
         <i class="fa fa-clock"></i> 系統資料更新時間：<b>{current_time_str}</b>
     </div>
-    
-    <div style="display: flex; border-bottom: 2px solid #337ab7; margin-bottom: 8px; font-size:12px; flex-wrap: wrap; gap: 4px; padding-bottom: 4px;">
+
+    <div style="display: flex; border-bottom: 2px solid #337ab7; margin-bottom: 8px; font-size: 12px; flex-wrap: wrap; gap: 4px; padding-bottom: 4px;">
         <button onclick="switchTab('tab-alert')" id="btn-alert" style="flex:1 1 auto; padding:6px; border:none; background:#337ab7; color:white; font-weight:bold; cursor:pointer; border-radius:4px;">CWA 動態</button>
         <button onclick="switchTab('tab-cwa-web')" id="btn-cwa-web" style="flex:1 1 auto; padding:6px; border:none; background:#eee; color:#333; font-weight:bold; cursor:pointer; border-radius:4px;">CWA 官網</button>
         <button onclick="switchTab('tab-jma')" id="btn-jma" style="flex:1 1 auto; padding:6px; border:none; background:#eee; color:#333; font-weight:bold; cursor:pointer; border-radius:4px;">JMA 動態</button>
@@ -344,7 +347,7 @@ tab_panel_html = f"""
         <button onclick="switchTab('tab-rain')" id="btn-rain" style="flex:1 1 auto; padding:6px; border:none; background:#eee; color:#333; font-weight:bold; cursor:pointer; border-radius:4px;">雨量</button>
     </div>
 
-    <div id="tab-alert" class="tab-content" style="overflow-y:auto; flex:1;">{alert_html}</div>
+    <div id="tab-alert" class="tab-content" style="display:block; overflow-y:auto; flex:1; line-height:1.6;">{alert_html}</div>
     
     <div id="tab-cwa-web" class="tab-content" style="display:none; overflow-y:auto; flex:1; position: relative;">
         <div style="margin-bottom: 5px; text-align: right;">
@@ -353,7 +356,7 @@ tab_panel_html = f"""
         <iframe src="https://www.cwa.gov.tw/V8/C/P/Typhoon/TY_NEWS.html" width="100%" height="90%" style="border:1px solid #ccc; border-radius: 4px;"></iframe>
     </div>
 
-    <div id="tab-jma" class="tab-content" style="display:none; overflow-y:auto; flex:1;">{jma_html}</div>
+    <div id="tab-jma" class="tab-content" style="display:none; overflow-y:auto; flex:1; line-height:1.6;">{jma_html}</div>
     
     <div id="tab-jma-web" class="tab-content" style="display:none; overflow-y:auto; flex:1; position: relative;">
         <div style="margin-bottom: 5px; text-align: right;">
@@ -368,23 +371,20 @@ tab_panel_html = f"""
 
 <script>
 function switchTab(tabId) {{
-    document.querySelectorAll('.tab-content').forEach(el => el.style.display = 'none');
-    document.getElementById(tabId).style.display = 'block';
-    
-    ['alert', 'cwa-web', 'jma', 'jma-web', 'wind', 'rain'].forEach(id => {{
-        let btn = document.getElementById('btn-' + id);
-        if('tab-' + id === tabId) {{
-            btn.style.background = '#337ab7';
-            btn.style.color = 'white';
-        }} else {{
-            btn.style.background = '#eee';
-            btn.style.color = '#333';
+    const tabIds = ['tab-alert', 'tab-cwa-web', 'tab-jma', 'tab-jma-web', 'tab-wind', 'tab-rain'];
+    tabIds.forEach(function(id) {{
+        const panel = document.getElementById(id);
+        const button = document.getElementById('btn-' + id.replace('tab-', ''));
+        const active = id === tabId;
+        if (panel) panel.style.display = active ? 'block' : 'none';
+        if (button) {{
+            button.style.background = active ? '#337ab7' : '#eee';
+            button.style.color = active ? 'white' : '#333';
         }}
     }});
 }}
 </script>
 """
-m.get_root().html.add_child(folium.Element(tab_panel_html))
 
 # 圖例
 legend_html = """
@@ -402,15 +402,18 @@ legend_html = """
   <i class="fa fa-square" style="color:purple; opacity:0.5;"></i> CWA 侵襲機率區
 </div>
 """
+
+m.get_root().html.add_child(folium.Element(tab_panel_html))
 m.get_root().html.add_child(folium.Element(legend_html))
 
-# 圖層疊加順序
+# 圖層疊加順序：機率區 -> 警報與暴風圈 -> NCDR 各國預測
 fg_cwa_wsp.add_to(m)
 fg_cwa_route.add_to(m)
 fg_ncdr.add_to(m)
 
+# 顯示地圖右上角的圖層切換控制項
 folium.LayerControl(position="topright", collapsed=False).add_to(m)
 
 output_file = "index.html"
 m.save(output_file)
-print(f"地圖已成功更新，已將所有功能與路徑完美整合：{output_file}")
+print(f"地圖已成功更新，路徑圖層、時間標籤與風雨資訊已全數恢復：{output_file}")

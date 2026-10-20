@@ -17,7 +17,7 @@
             <meta name="viewport" content="width=device-width,
                 initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
             <style>
-                #map_dae66025aa548b4fde7cde9105ea3a39 {
+                #map_44677b5c3376f119adb396a97b4b1125 {
                     position: relative;
                     width: 100.0%;
                     height: 100.0%;
@@ -54,19 +54,19 @@
 <body>
     
     
-<div style="position: fixed; bottom: 30px; right: 30px; width: 440px; height: 500px; 
-     background-color: white; border:2px solid #337ab7; z-index:9999; font-size:13px;
+<div style="position: fixed; bottom: 30px; right: 30px; width: 440px; height: 500px;
+     background-color: white; border: 2px solid #337ab7; z-index: 9999; font-size: 13px;
      padding: 10px; border-radius: 8px; box-shadow: 0 0 10px rgba(0,0,0,0.3); opacity: 0.96;
-     display: flex; flex-direction: column;">
-    
-    <div style="display: flex; justify-content: space-between; align-items: baseline; margin-bottom:6px;">
-        <b style="font-size:15px; color:#333;">颱風即時動態與各國預測整合</b>
+     display: flex; flex-direction: column; box-sizing: border-box;">
+
+    <div style="display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 6px;">
+        <b style="font-size: 15px; color: #333;">颱風即時動態與各國預測整合</b>
     </div>
-    <div style="font-size:11px; color:#666; margin-bottom:8px; border-bottom:1px solid #ccc; padding-bottom:5px;">
-        <i class="fa fa-clock"></i> 系統資料更新時間：<b>2026-10-20 23:44:30</b>
+    <div style="font-size: 11px; color: #666; margin-bottom: 8px; border-bottom: 1px solid #ccc; padding-bottom: 5px;">
+        <i class="fa fa-clock"></i> 系統資料更新時間：<b>2026-10-21 00:02:29</b>
     </div>
-    
-    <div style="display: flex; border-bottom: 2px solid #337ab7; margin-bottom: 8px; font-size:12px; flex-wrap: wrap; gap: 4px; padding-bottom: 4px;">
+
+    <div style="display: flex; border-bottom: 2px solid #337ab7; margin-bottom: 8px; font-size: 12px; flex-wrap: wrap; gap: 4px; padding-bottom: 4px;">
         <button onclick="switchTab('tab-alert')" id="btn-alert" style="flex:1 1 auto; padding:6px; border:none; background:#337ab7; color:white; font-weight:bold; cursor:pointer; border-radius:4px;">CWA 動態</button>
         <button onclick="switchTab('tab-cwa-web')" id="btn-cwa-web" style="flex:1 1 auto; padding:6px; border:none; background:#eee; color:#333; font-weight:bold; cursor:pointer; border-radius:4px;">CWA 官網</button>
         <button onclick="switchTab('tab-jma')" id="btn-jma" style="flex:1 1 auto; padding:6px; border:none; background:#eee; color:#333; font-weight:bold; cursor:pointer; border-radius:4px;">JMA 動態</button>
@@ -75,8 +75,8 @@
         <button onclick="switchTab('tab-rain')" id="btn-rain" style="flex:1 1 auto; padding:6px; border:none; background:#eee; color:#333; font-weight:bold; cursor:pointer; border-radius:4px;">雨量</button>
     </div>
 
-    <div id="tab-alert" class="tab-content" style="overflow-y:auto; flex:1;">
-    <h4 style="margin:0 0 5px 0; color:#0275d8;">即時颱風消息</h4>
+    <div id="tab-alert" class="tab-content" style="display:block; overflow-y:auto; flex:1; line-height:1.6;">
+    <h4 style="margin:0 0 5px 0; color:#0275d8; padding-top: 5px;">即時颱風消息</h4>
     <p style="color:gray;">目前臺灣尚未發布颱風警報。請參考地圖上之各國預測路徑及切換其他分頁查看最新動態。</p>
     </div>
     
@@ -87,7 +87,7 @@
         <iframe src="https://www.cwa.gov.tw/V8/C/P/Typhoon/TY_NEWS.html" width="100%" height="90%" style="border:1px solid #ccc; border-radius: 4px;"></iframe>
     </div>
 
-    <div id="tab-jma" class="tab-content" style="display:none; overflow-y:auto; flex:1;"><p style='color:green; padding: 10px; font-weight:bold;'>✅ 目前西太平洋無活躍颱風，日本氣象廳 (JMA) 暫無發布警報。</p></div>
+    <div id="tab-jma" class="tab-content" style="display:none; overflow-y:auto; flex:1; line-height:1.6;"><p style='color:green; padding: 10px; font-weight:bold;'>✅ 目前西太平洋無活躍颱風，日本氣象廳 (JMA) 暫無發布警報。</p></div>
     
     <div id="tab-jma-web" class="tab-content" style="display:none; overflow-y:auto; flex:1; position: relative;">
         <div style="margin-bottom: 5px; text-align: right;">
@@ -96,23 +96,21 @@
         <iframe src="https://www.data.jma.go.jp/multi/cyclone/index.html?lang=cn_zt" width="100%" height="90%" style="border:1px solid #ccc; border-radius: 4px;"></iframe>
     </div>
 
-    <div id="tab-wind" class="tab-content" style="display:none; overflow-y:auto; flex:1;"><p style='color:gray;'>目前無發布最新風力預測資料</p></div>
-    <div id="tab-rain" class="tab-content" style="display:none; overflow-y:auto; flex:1;"><p style='color:gray;'>目前無發布最新總雨量預測資料</p></div>
+    <div id="tab-wind" class="tab-content" style="display:none; overflow-y:auto; flex:1;"><p style='color:gray; padding:10px;'>目前無發布最新風力預測資料</p></div>
+    <div id="tab-rain" class="tab-content" style="display:none; overflow-y:auto; flex:1;"><p style='color:gray; padding:10px;'>目前無發布最新總雨量預測資料</p></div>
 </div>
 
 <script>
 function switchTab(tabId) {
-    document.querySelectorAll('.tab-content').forEach(el => el.style.display = 'none');
-    document.getElementById(tabId).style.display = 'block';
-    
-    ['alert', 'cwa-web', 'jma', 'jma-web', 'wind', 'rain'].forEach(id => {
-        let btn = document.getElementById('btn-' + id);
-        if('tab-' + id === tabId) {
-            btn.style.background = '#337ab7';
-            btn.style.color = 'white';
-        } else {
-            btn.style.background = '#eee';
-            btn.style.color = '#333';
+    const tabIds = ['tab-alert', 'tab-cwa-web', 'tab-jma', 'tab-jma-web', 'tab-wind', 'tab-rain'];
+    tabIds.forEach(function(id) {
+        const panel = document.getElementById(id);
+        const button = document.getElementById('btn-' + id.replace('tab-', ''));
+        const active = id === tabId;
+        if (panel) panel.style.display = active ? 'block' : 'none';
+        if (button) {
+            button.style.background = active ? '#337ab7' : '#eee';
+            button.style.color = active ? 'white' : '#333';
         }
     });
 }
@@ -132,14 +130,14 @@ function switchTab(tabId) {
   <i class="fa fa-square" style="color:purple; opacity:0.5;"></i> CWA 侵襲機率區
 </div>
     
-            <div class="folium-map" id="map_dae66025aa548b4fde7cde9105ea3a39" ></div>
+            <div class="folium-map" id="map_44677b5c3376f119adb396a97b4b1125" ></div>
         
 </body>
 <script>
     
     
-            var map_dae66025aa548b4fde7cde9105ea3a39 = L.map(
-                "map_dae66025aa548b4fde7cde9105ea3a39",
+            var map_44677b5c3376f119adb396a97b4b1125 = L.map(
+                "map_44677b5c3376f119adb396a97b4b1125",
                 {
                     center: [23.8, 121.0],
                     crs: L.CRS.EPSG3857,
@@ -156,7 +154,7 @@ function switchTab(tabId) {
 
         
     
-            var tile_layer_9ff459166cb87e16fdc6db33b3db2c48 = L.tileLayer(
+            var tile_layer_88719cf3f982424a13a38c8c8040a139 = L.tileLayer(
                 "https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}",
                 {
   "minZoom": 0,
@@ -173,57 +171,57 @@ function switchTab(tabId) {
             );
         
     
-            tile_layer_9ff459166cb87e16fdc6db33b3db2c48.addTo(map_dae66025aa548b4fde7cde9105ea3a39);
+            tile_layer_88719cf3f982424a13a38c8c8040a139.addTo(map_44677b5c3376f119adb396a97b4b1125);
         
     
-            var feature_group_0c7f5f472e465908f462e3785617e005 = L.featureGroup(
+            var feature_group_6d673138001815dd0c4621aad17dfc84 = L.featureGroup(
                 {
 }
             );
         
     
-            feature_group_0c7f5f472e465908f462e3785617e005.addTo(map_dae66025aa548b4fde7cde9105ea3a39);
+            feature_group_6d673138001815dd0c4621aad17dfc84.addTo(map_44677b5c3376f119adb396a97b4b1125);
         
     
-            var feature_group_bd8d78797b807d627bc5232854c40b53 = L.featureGroup(
+            var feature_group_767d0eb13a3868726bf5c6be829b9891 = L.featureGroup(
                 {
 }
             );
         
     
-            feature_group_bd8d78797b807d627bc5232854c40b53.addTo(map_dae66025aa548b4fde7cde9105ea3a39);
+            feature_group_767d0eb13a3868726bf5c6be829b9891.addTo(map_44677b5c3376f119adb396a97b4b1125);
         
     
-            var feature_group_3c60ab709b5b7eb3941ea70f06caad1c = L.featureGroup(
+            var feature_group_015a21a269e9b60c195b7dadf70dd04e = L.featureGroup(
                 {
 }
             );
         
     
-            var circle_marker_a66301f243a8e757d564c399666fc3f2 = L.circleMarker(
+            var circle_marker_7540d4c5cff81e9536c50a52ba3963fd = L.circleMarker(
                 [16.8999996185303, 133.0],
                 {"bubblingMouseEvents": true, "color": "cadetblue", "dashArray": null, "dashOffset": null, "fill": true, "fillColor": "cadetblue", "fillOpacity": 1.0, "fillRule": "evenodd", "lineCap": "round", "lineJoin": "round", "opacity": 1.0, "radius": 5, "stroke": true, "weight": 3}
-            ).addTo(feature_group_3c60ab709b5b7eb3941ea70f06caad1c);
+            ).addTo(feature_group_015a21a269e9b60c195b7dadf70dd04e);
         
     
-        var popup_f3e14e9eac260e20ef2e485445c2969b = L.popup({
+        var popup_42f28431477aa8d95535355cc1e7bb98 = L.popup({
   "maxWidth": 300,
 });
 
         
             
-                var html_5fbc234c8f4c6eeead1ecea66832529b = $(`<div id="html_5fbc234c8f4c6eeead1ecea66832529b" style="width: 100.0%; height: 100.0%;"><b>NCDR: HKO發佈時間:10/20 20</b><br><b>位置：北緯 16.9°, 東經 133.0°</b></div>`)[0];
-                popup_f3e14e9eac260e20ef2e485445c2969b.setContent(html_5fbc234c8f4c6eeead1ecea66832529b);
+                var html_2fcccfd65b06935ef98be1ddcfb5113a = $(`<div id="html_2fcccfd65b06935ef98be1ddcfb5113a" style="width: 100.0%; height: 100.0%;"><b>NCDR: HKO發佈時間:10/20 20</b><br><b>位置：北緯 16.9°, 東經 133.0°</b></div>`)[0];
+                popup_42f28431477aa8d95535355cc1e7bb98.setContent(html_2fcccfd65b06935ef98be1ddcfb5113a);
             
         
 
-        circle_marker_a66301f243a8e757d564c399666fc3f2.bindPopup(popup_f3e14e9eac260e20ef2e485445c2969b)
+        circle_marker_7540d4c5cff81e9536c50a52ba3963fd.bindPopup(popup_42f28431477aa8d95535355cc1e7bb98)
         ;
 
         
     
     
-            circle_marker_a66301f243a8e757d564c399666fc3f2.bindTooltip(
+            circle_marker_7540d4c5cff81e9536c50a52ba3963fd.bindTooltip(
                 `<div>
                      NCDR: HKO發佈時間:10/20 20 (北緯 16.9°, 東經 133.0°)
                  </div>`,
@@ -233,30 +231,30 @@ function switchTab(tabId) {
             );
         
     
-            var circle_marker_b23b1e7fadd08d389a9c2932a2a042fc = L.circleMarker(
+            var circle_marker_128f4e6ce5bc5332136531bde76856be = L.circleMarker(
                 [19.2999992370605, 128.300003051758],
                 {"bubblingMouseEvents": true, "color": "cadetblue", "dashArray": null, "dashOffset": null, "fill": true, "fillColor": "cadetblue", "fillOpacity": 1.0, "fillRule": "evenodd", "lineCap": "round", "lineJoin": "round", "opacity": 1.0, "radius": 5, "stroke": true, "weight": 3}
-            ).addTo(feature_group_3c60ab709b5b7eb3941ea70f06caad1c);
+            ).addTo(feature_group_015a21a269e9b60c195b7dadf70dd04e);
         
     
-        var popup_30ddbac7d933371db0915a19cfbbc897 = L.popup({
+        var popup_6519748235654b61fdeea8910b6d5299 = L.popup({
   "maxWidth": 300,
 });
 
         
             
-                var html_d383116d44e4c06476d465bda3cfd264 = $(`<div id="html_d383116d44e4c06476d465bda3cfd264" style="width: 100.0%; height: 100.0%;"><b>NCDR: 颱風路徑</b><br><b>位置：北緯 19.3°, 東經 128.3°</b></div>`)[0];
-                popup_30ddbac7d933371db0915a19cfbbc897.setContent(html_d383116d44e4c06476d465bda3cfd264);
+                var html_691580066f6e701488a80d6d60bf092f = $(`<div id="html_691580066f6e701488a80d6d60bf092f" style="width: 100.0%; height: 100.0%;"><b>NCDR: 颱風路徑</b><br><b>位置：北緯 19.3°, 東經 128.3°</b></div>`)[0];
+                popup_6519748235654b61fdeea8910b6d5299.setContent(html_691580066f6e701488a80d6d60bf092f);
             
         
 
-        circle_marker_b23b1e7fadd08d389a9c2932a2a042fc.bindPopup(popup_30ddbac7d933371db0915a19cfbbc897)
+        circle_marker_128f4e6ce5bc5332136531bde76856be.bindPopup(popup_6519748235654b61fdeea8910b6d5299)
         ;
 
         
     
     
-            circle_marker_b23b1e7fadd08d389a9c2932a2a042fc.bindTooltip(
+            circle_marker_128f4e6ce5bc5332136531bde76856be.bindTooltip(
                 `<div>
                      NCDR: 颱風路徑 (北緯 19.3°, 東經 128.3°)
                  </div>`,
@@ -266,30 +264,30 @@ function switchTab(tabId) {
             );
         
     
-            var circle_marker_fd783eeccad7930b2a953e4d2f0e57f6 = L.circleMarker(
+            var circle_marker_e98d4e26cf80b04359c57935cdd5aac5 = L.circleMarker(
                 [21.2999992370605, 125.5],
                 {"bubblingMouseEvents": true, "color": "cadetblue", "dashArray": null, "dashOffset": null, "fill": true, "fillColor": "cadetblue", "fillOpacity": 1.0, "fillRule": "evenodd", "lineCap": "round", "lineJoin": "round", "opacity": 1.0, "radius": 5, "stroke": true, "weight": 3}
-            ).addTo(feature_group_3c60ab709b5b7eb3941ea70f06caad1c);
+            ).addTo(feature_group_015a21a269e9b60c195b7dadf70dd04e);
         
     
-        var popup_c0b13cbe502e123e482dc76e56dbde4c = L.popup({
+        var popup_01677c496095365046284554b7ce7340 = L.popup({
   "maxWidth": 300,
 });
 
         
             
-                var html_891f3407b487e58c749e4e0d32ca789e = $(`<div id="html_891f3407b487e58c749e4e0d32ca789e" style="width: 100.0%; height: 100.0%;"><b>NCDR: 颱風路徑</b><br><b>位置：北緯 21.3°, 東經 125.5°</b></div>`)[0];
-                popup_c0b13cbe502e123e482dc76e56dbde4c.setContent(html_891f3407b487e58c749e4e0d32ca789e);
+                var html_671084001c277fc2b3146e363c71574e = $(`<div id="html_671084001c277fc2b3146e363c71574e" style="width: 100.0%; height: 100.0%;"><b>NCDR: 颱風路徑</b><br><b>位置：北緯 21.3°, 東經 125.5°</b></div>`)[0];
+                popup_01677c496095365046284554b7ce7340.setContent(html_671084001c277fc2b3146e363c71574e);
             
         
 
-        circle_marker_fd783eeccad7930b2a953e4d2f0e57f6.bindPopup(popup_c0b13cbe502e123e482dc76e56dbde4c)
+        circle_marker_e98d4e26cf80b04359c57935cdd5aac5.bindPopup(popup_01677c496095365046284554b7ce7340)
         ;
 
         
     
     
-            circle_marker_fd783eeccad7930b2a953e4d2f0e57f6.bindTooltip(
+            circle_marker_e98d4e26cf80b04359c57935cdd5aac5.bindTooltip(
                 `<div>
                      NCDR: 颱風路徑 (北緯 21.3°, 東經 125.5°)
                  </div>`,
@@ -299,30 +297,30 @@ function switchTab(tabId) {
             );
         
     
-            var circle_marker_646ddeca8845bc5907466e2d1bfb11e2 = L.circleMarker(
+            var circle_marker_0ef962b7e869ac7b1b85be993e3341ed = L.circleMarker(
                 [24.2999992370605, 123.400001525879],
                 {"bubblingMouseEvents": true, "color": "cadetblue", "dashArray": null, "dashOffset": null, "fill": true, "fillColor": "cadetblue", "fillOpacity": 1.0, "fillRule": "evenodd", "lineCap": "round", "lineJoin": "round", "opacity": 1.0, "radius": 5, "stroke": true, "weight": 3}
-            ).addTo(feature_group_3c60ab709b5b7eb3941ea70f06caad1c);
+            ).addTo(feature_group_015a21a269e9b60c195b7dadf70dd04e);
         
     
-        var popup_aec51f78b2bbc280348667de8c368ae5 = L.popup({
+        var popup_1a0395a7f8db8ccd8840045f1e59e98e = L.popup({
   "maxWidth": 300,
 });
 
         
             
-                var html_96f90c134554d499ec054806208dfe88 = $(`<div id="html_96f90c134554d499ec054806208dfe88" style="width: 100.0%; height: 100.0%;"><b>NCDR: 颱風路徑</b><br><b>位置：北緯 24.3°, 東經 123.4°</b></div>`)[0];
-                popup_aec51f78b2bbc280348667de8c368ae5.setContent(html_96f90c134554d499ec054806208dfe88);
+                var html_5ecf1de954226826b88d13828b488f2d = $(`<div id="html_5ecf1de954226826b88d13828b488f2d" style="width: 100.0%; height: 100.0%;"><b>NCDR: 颱風路徑</b><br><b>位置：北緯 24.3°, 東經 123.4°</b></div>`)[0];
+                popup_1a0395a7f8db8ccd8840045f1e59e98e.setContent(html_5ecf1de954226826b88d13828b488f2d);
             
         
 
-        circle_marker_646ddeca8845bc5907466e2d1bfb11e2.bindPopup(popup_aec51f78b2bbc280348667de8c368ae5)
+        circle_marker_0ef962b7e869ac7b1b85be993e3341ed.bindPopup(popup_1a0395a7f8db8ccd8840045f1e59e98e)
         ;
 
         
     
     
-            circle_marker_646ddeca8845bc5907466e2d1bfb11e2.bindTooltip(
+            circle_marker_0ef962b7e869ac7b1b85be993e3341ed.bindTooltip(
                 `<div>
                      NCDR: 颱風路徑 (北緯 24.3°, 東經 123.4°)
                  </div>`,
@@ -332,30 +330,30 @@ function switchTab(tabId) {
             );
         
     
-            var circle_marker_b87089c6df420d31f00f31162d22634a = L.circleMarker(
+            var circle_marker_a510f746dc842f91258ecff39f66e068 = L.circleMarker(
                 [28.3999996185303, 123.699996948242],
                 {"bubblingMouseEvents": true, "color": "cadetblue", "dashArray": null, "dashOffset": null, "fill": true, "fillColor": "cadetblue", "fillOpacity": 1.0, "fillRule": "evenodd", "lineCap": "round", "lineJoin": "round", "opacity": 1.0, "radius": 5, "stroke": true, "weight": 3}
-            ).addTo(feature_group_3c60ab709b5b7eb3941ea70f06caad1c);
+            ).addTo(feature_group_015a21a269e9b60c195b7dadf70dd04e);
         
     
-        var popup_b498933146b53fcc459fb0bd2296083d = L.popup({
+        var popup_53ec64ddc350f2c80759cc608aabdbd6 = L.popup({
   "maxWidth": 300,
 });
 
         
             
-                var html_894a3ab5366f6ed03e96273947176c61 = $(`<div id="html_894a3ab5366f6ed03e96273947176c61" style="width: 100.0%; height: 100.0%;"><b>NCDR: 颱風路徑</b><br><b>位置：北緯 28.4°, 東經 123.7°</b></div>`)[0];
-                popup_b498933146b53fcc459fb0bd2296083d.setContent(html_894a3ab5366f6ed03e96273947176c61);
+                var html_46d1330801c6d69aca10743e9c100af4 = $(`<div id="html_46d1330801c6d69aca10743e9c100af4" style="width: 100.0%; height: 100.0%;"><b>NCDR: 颱風路徑</b><br><b>位置：北緯 28.4°, 東經 123.7°</b></div>`)[0];
+                popup_53ec64ddc350f2c80759cc608aabdbd6.setContent(html_46d1330801c6d69aca10743e9c100af4);
             
         
 
-        circle_marker_b87089c6df420d31f00f31162d22634a.bindPopup(popup_b498933146b53fcc459fb0bd2296083d)
+        circle_marker_a510f746dc842f91258ecff39f66e068.bindPopup(popup_53ec64ddc350f2c80759cc608aabdbd6)
         ;
 
         
     
     
-            circle_marker_b87089c6df420d31f00f31162d22634a.bindTooltip(
+            circle_marker_a510f746dc842f91258ecff39f66e068.bindTooltip(
                 `<div>
                      NCDR: 颱風路徑 (北緯 28.4°, 東經 123.7°)
                  </div>`,
@@ -365,30 +363,30 @@ function switchTab(tabId) {
             );
         
     
-            var circle_marker_fe5bc770d5e8841c235b8f463630c2f6 = L.circleMarker(
+            var circle_marker_b8b7d68ab5a06c89f22d8226e9ec18be = L.circleMarker(
                 [33.5999984741211, 129.800003051758],
                 {"bubblingMouseEvents": true, "color": "cadetblue", "dashArray": null, "dashOffset": null, "fill": true, "fillColor": "cadetblue", "fillOpacity": 1.0, "fillRule": "evenodd", "lineCap": "round", "lineJoin": "round", "opacity": 1.0, "radius": 5, "stroke": true, "weight": 3}
-            ).addTo(feature_group_3c60ab709b5b7eb3941ea70f06caad1c);
+            ).addTo(feature_group_015a21a269e9b60c195b7dadf70dd04e);
         
     
-        var popup_85a938c115a23a0733128d866bbcaac6 = L.popup({
+        var popup_004ce2945a0a16e3d989dc00f4d35e60 = L.popup({
   "maxWidth": 300,
 });
 
         
             
-                var html_55e4b99bd2926568304ec9f6424ae1bd = $(`<div id="html_55e4b99bd2926568304ec9f6424ae1bd" style="width: 100.0%; height: 100.0%;"><b>NCDR: 颱風路徑</b><br><b>位置：北緯 33.6°, 東經 129.8°</b></div>`)[0];
-                popup_85a938c115a23a0733128d866bbcaac6.setContent(html_55e4b99bd2926568304ec9f6424ae1bd);
+                var html_f36f0108f530e30535516d07bb9d91ae = $(`<div id="html_f36f0108f530e30535516d07bb9d91ae" style="width: 100.0%; height: 100.0%;"><b>NCDR: 颱風路徑</b><br><b>位置：北緯 33.6°, 東經 129.8°</b></div>`)[0];
+                popup_004ce2945a0a16e3d989dc00f4d35e60.setContent(html_f36f0108f530e30535516d07bb9d91ae);
             
         
 
-        circle_marker_fe5bc770d5e8841c235b8f463630c2f6.bindPopup(popup_85a938c115a23a0733128d866bbcaac6)
+        circle_marker_b8b7d68ab5a06c89f22d8226e9ec18be.bindPopup(popup_004ce2945a0a16e3d989dc00f4d35e60)
         ;
 
         
     
     
-            circle_marker_fe5bc770d5e8841c235b8f463630c2f6.bindTooltip(
+            circle_marker_b8b7d68ab5a06c89f22d8226e9ec18be.bindTooltip(
                 `<div>
                      NCDR: 颱風路徑 (北緯 33.6°, 東經 129.8°)
                  </div>`,
@@ -398,13 +396,13 @@ function switchTab(tabId) {
             );
         
     
-            var poly_line_bc0bea03d9d273df012f11e47cb10725 = L.polyline(
+            var poly_line_3cf59353ef44fd2d0fff2f78eda26490 = L.polyline(
                 [[16.9, 133.0], [19.3, 128.3], [21.3, 125.5], [24.3, 123.4], [28.4, 123.7], [33.6, 129.8]],
                 {"bubblingMouseEvents": true, "color": "cadetblue", "dashArray": null, "dashOffset": null, "fill": false, "fillColor": "cadetblue", "fillOpacity": 0.2, "fillRule": "evenodd", "lineCap": "round", "lineJoin": "round", "noClip": false, "opacity": 1.0, "smoothFactor": 1.0, "stroke": true, "weight": 4}
-            ).addTo(feature_group_3c60ab709b5b7eb3941ea70f06caad1c);
+            ).addTo(feature_group_015a21a269e9b60c195b7dadf70dd04e);
         
     
-            poly_line_bc0bea03d9d273df012f11e47cb10725.bindTooltip(
+            poly_line_3cf59353ef44fd2d0fff2f78eda26490.bindTooltip(
                 `<div>
                      <b>NCDR: HKO</b>
                  </div>`,
@@ -414,30 +412,30 @@ function switchTab(tabId) {
             );
         
     
-            var circle_marker_9b5f7fc763818f4e8b9557ee6447b781 = L.circleMarker(
+            var circle_marker_28b99a18cc7b062dcf7ba75d79726151 = L.circleMarker(
                 [17.0, 133.0],
                 {"bubblingMouseEvents": true, "color": "green", "dashArray": null, "dashOffset": null, "fill": true, "fillColor": "green", "fillOpacity": 1.0, "fillRule": "evenodd", "lineCap": "round", "lineJoin": "round", "opacity": 1.0, "radius": 5, "stroke": true, "weight": 3}
-            ).addTo(feature_group_3c60ab709b5b7eb3941ea70f06caad1c);
+            ).addTo(feature_group_015a21a269e9b60c195b7dadf70dd04e);
         
     
-        var popup_ffc570183b5a398e3477f5c9eed76b36 = L.popup({
+        var popup_35c09e13f51210674572a39c1333b8a7 = L.popup({
   "maxWidth": 300,
 });
 
         
             
-                var html_d9b32dcdf9035afbbe29f781eb3fa93d = $(`<div id="html_d9b32dcdf9035afbbe29f781eb3fa93d" style="width: 100.0%; height: 100.0%;"><b>NCDR: JTWC發佈時間:10/20 20</b><br><b>位置：北緯 17.0°, 東經 133.0°</b></div>`)[0];
-                popup_ffc570183b5a398e3477f5c9eed76b36.setContent(html_d9b32dcdf9035afbbe29f781eb3fa93d);
+                var html_810a5a79dcb4ad4e0ef12dead698be96 = $(`<div id="html_810a5a79dcb4ad4e0ef12dead698be96" style="width: 100.0%; height: 100.0%;"><b>NCDR: JTWC發佈時間:10/20 20</b><br><b>位置：北緯 17.0°, 東經 133.0°</b></div>`)[0];
+                popup_35c09e13f51210674572a39c1333b8a7.setContent(html_810a5a79dcb4ad4e0ef12dead698be96);
             
         
 
-        circle_marker_9b5f7fc763818f4e8b9557ee6447b781.bindPopup(popup_ffc570183b5a398e3477f5c9eed76b36)
+        circle_marker_28b99a18cc7b062dcf7ba75d79726151.bindPopup(popup_35c09e13f51210674572a39c1333b8a7)
         ;
 
         
     
     
-            circle_marker_9b5f7fc763818f4e8b9557ee6447b781.bindTooltip(
+            circle_marker_28b99a18cc7b062dcf7ba75d79726151.bindTooltip(
                 `<div>
                      NCDR: JTWC發佈時間:10/20 20 (北緯 17.0°, 東經 133.0°)
                  </div>`,
@@ -447,30 +445,30 @@ function switchTab(tabId) {
             );
         
     
-            var circle_marker_a9e12a955bba556d307598d7367c07e2 = L.circleMarker(
+            var circle_marker_28f9491b4987ec6119b13c1bb8950d0d = L.circleMarker(
                 [19.5, 128.300003051758],
                 {"bubblingMouseEvents": true, "color": "cadetblue", "dashArray": null, "dashOffset": null, "fill": true, "fillColor": "cadetblue", "fillOpacity": 1.0, "fillRule": "evenodd", "lineCap": "round", "lineJoin": "round", "opacity": 1.0, "radius": 5, "stroke": true, "weight": 3}
-            ).addTo(feature_group_3c60ab709b5b7eb3941ea70f06caad1c);
+            ).addTo(feature_group_015a21a269e9b60c195b7dadf70dd04e);
         
     
-        var popup_d526967e9cec8d114b0cc4ff4bfb2dd3 = L.popup({
+        var popup_9044f7c4e148580a73834ff86462f4c7 = L.popup({
   "maxWidth": 300,
 });
 
         
             
-                var html_2102851d239674b7ed66adedf3749eda = $(`<div id="html_2102851d239674b7ed66adedf3749eda" style="width: 100.0%; height: 100.0%;"><b>NCDR: 颱風路徑</b><br><b>位置：北緯 19.5°, 東經 128.3°</b></div>`)[0];
-                popup_d526967e9cec8d114b0cc4ff4bfb2dd3.setContent(html_2102851d239674b7ed66adedf3749eda);
+                var html_6356b5323cb5a8dd1025631866bcb339 = $(`<div id="html_6356b5323cb5a8dd1025631866bcb339" style="width: 100.0%; height: 100.0%;"><b>NCDR: 颱風路徑</b><br><b>位置：北緯 19.5°, 東經 128.3°</b></div>`)[0];
+                popup_9044f7c4e148580a73834ff86462f4c7.setContent(html_6356b5323cb5a8dd1025631866bcb339);
             
         
 
-        circle_marker_a9e12a955bba556d307598d7367c07e2.bindPopup(popup_d526967e9cec8d114b0cc4ff4bfb2dd3)
+        circle_marker_28f9491b4987ec6119b13c1bb8950d0d.bindPopup(popup_9044f7c4e148580a73834ff86462f4c7)
         ;
 
         
     
     
-            circle_marker_a9e12a955bba556d307598d7367c07e2.bindTooltip(
+            circle_marker_28f9491b4987ec6119b13c1bb8950d0d.bindTooltip(
                 `<div>
                      NCDR: 颱風路徑 (北緯 19.5°, 東經 128.3°)
                  </div>`,
@@ -480,30 +478,30 @@ function switchTab(tabId) {
             );
         
     
-            var circle_marker_c6a2d4bdbbf9d4d85bad53d90cf56adb = L.circleMarker(
+            var circle_marker_2fc63a37a2b4b9ef8b619f5e3c657006 = L.circleMarker(
                 [21.6000003814697, 125.5],
                 {"bubblingMouseEvents": true, "color": "cadetblue", "dashArray": null, "dashOffset": null, "fill": true, "fillColor": "cadetblue", "fillOpacity": 1.0, "fillRule": "evenodd", "lineCap": "round", "lineJoin": "round", "opacity": 1.0, "radius": 5, "stroke": true, "weight": 3}
-            ).addTo(feature_group_3c60ab709b5b7eb3941ea70f06caad1c);
+            ).addTo(feature_group_015a21a269e9b60c195b7dadf70dd04e);
         
     
-        var popup_051feb96fd52683bfad940707a7477ca = L.popup({
+        var popup_35f80a244ad6467dcd0a97048a2f30d8 = L.popup({
   "maxWidth": 300,
 });
 
         
             
-                var html_e2a6c2a7ef7578fcc80ed746a17c880e = $(`<div id="html_e2a6c2a7ef7578fcc80ed746a17c880e" style="width: 100.0%; height: 100.0%;"><b>NCDR: 颱風路徑</b><br><b>位置：北緯 21.6°, 東經 125.5°</b></div>`)[0];
-                popup_051feb96fd52683bfad940707a7477ca.setContent(html_e2a6c2a7ef7578fcc80ed746a17c880e);
+                var html_e8c666d22d14565040aa7afd9ae862ef = $(`<div id="html_e8c666d22d14565040aa7afd9ae862ef" style="width: 100.0%; height: 100.0%;"><b>NCDR: 颱風路徑</b><br><b>位置：北緯 21.6°, 東經 125.5°</b></div>`)[0];
+                popup_35f80a244ad6467dcd0a97048a2f30d8.setContent(html_e8c666d22d14565040aa7afd9ae862ef);
             
         
 
-        circle_marker_c6a2d4bdbbf9d4d85bad53d90cf56adb.bindPopup(popup_051feb96fd52683bfad940707a7477ca)
+        circle_marker_2fc63a37a2b4b9ef8b619f5e3c657006.bindPopup(popup_35f80a244ad6467dcd0a97048a2f30d8)
         ;
 
         
     
     
-            circle_marker_c6a2d4bdbbf9d4d85bad53d90cf56adb.bindTooltip(
+            circle_marker_2fc63a37a2b4b9ef8b619f5e3c657006.bindTooltip(
                 `<div>
                      NCDR: 颱風路徑 (北緯 21.6°, 東經 125.5°)
                  </div>`,
@@ -513,30 +511,30 @@ function switchTab(tabId) {
             );
         
     
-            var circle_marker_e465c8ca0d4bb847925eeb6ef0e172bc = L.circleMarker(
+            var circle_marker_7b7c413e85cc08353602227c50fcec5e = L.circleMarker(
                 [25.0, 123.900001525879],
                 {"bubblingMouseEvents": true, "color": "cadetblue", "dashArray": null, "dashOffset": null, "fill": true, "fillColor": "cadetblue", "fillOpacity": 1.0, "fillRule": "evenodd", "lineCap": "round", "lineJoin": "round", "opacity": 1.0, "radius": 5, "stroke": true, "weight": 3}
-            ).addTo(feature_group_3c60ab709b5b7eb3941ea70f06caad1c);
+            ).addTo(feature_group_015a21a269e9b60c195b7dadf70dd04e);
         
     
-        var popup_9ec0995b4722aa535a23736ad411d7ce = L.popup({
+        var popup_b952936620a83b46ba6ac8caef4aa2fc = L.popup({
   "maxWidth": 300,
 });
 
         
             
-                var html_c9d2396890a146449d9a5be0b40d070c = $(`<div id="html_c9d2396890a146449d9a5be0b40d070c" style="width: 100.0%; height: 100.0%;"><b>NCDR: 颱風路徑</b><br><b>位置：北緯 25.0°, 東經 123.9°</b></div>`)[0];
-                popup_9ec0995b4722aa535a23736ad411d7ce.setContent(html_c9d2396890a146449d9a5be0b40d070c);
+                var html_cdb201a6fd74e3764d6cdee8b64926bf = $(`<div id="html_cdb201a6fd74e3764d6cdee8b64926bf" style="width: 100.0%; height: 100.0%;"><b>NCDR: 颱風路徑</b><br><b>位置：北緯 25.0°, 東經 123.9°</b></div>`)[0];
+                popup_b952936620a83b46ba6ac8caef4aa2fc.setContent(html_cdb201a6fd74e3764d6cdee8b64926bf);
             
         
 
-        circle_marker_e465c8ca0d4bb847925eeb6ef0e172bc.bindPopup(popup_9ec0995b4722aa535a23736ad411d7ce)
+        circle_marker_7b7c413e85cc08353602227c50fcec5e.bindPopup(popup_b952936620a83b46ba6ac8caef4aa2fc)
         ;
 
         
     
     
-            circle_marker_e465c8ca0d4bb847925eeb6ef0e172bc.bindTooltip(
+            circle_marker_7b7c413e85cc08353602227c50fcec5e.bindTooltip(
                 `<div>
                      NCDR: 颱風路徑 (北緯 25.0°, 東經 123.9°)
                  </div>`,
@@ -546,30 +544,30 @@ function switchTab(tabId) {
             );
         
     
-            var circle_marker_a3d0f147a9c54f00ea19dadd6a2e3328 = L.circleMarker(
+            var circle_marker_4d5456cacce8d7c8bf741198dae057e1 = L.circleMarker(
                 [29.5, 125.300003051758],
                 {"bubblingMouseEvents": true, "color": "cadetblue", "dashArray": null, "dashOffset": null, "fill": true, "fillColor": "cadetblue", "fillOpacity": 1.0, "fillRule": "evenodd", "lineCap": "round", "lineJoin": "round", "opacity": 1.0, "radius": 5, "stroke": true, "weight": 3}
-            ).addTo(feature_group_3c60ab709b5b7eb3941ea70f06caad1c);
+            ).addTo(feature_group_015a21a269e9b60c195b7dadf70dd04e);
         
     
-        var popup_895b3a794a6963ffca722e3e73b827d3 = L.popup({
+        var popup_b7318cdc65c30ad1a0f7e4c9ac0481ba = L.popup({
   "maxWidth": 300,
 });
 
         
             
-                var html_3f30d5f01e56b1393c1399155cf9d0b2 = $(`<div id="html_3f30d5f01e56b1393c1399155cf9d0b2" style="width: 100.0%; height: 100.0%;"><b>NCDR: 颱風路徑</b><br><b>位置：北緯 29.5°, 東經 125.3°</b></div>`)[0];
-                popup_895b3a794a6963ffca722e3e73b827d3.setContent(html_3f30d5f01e56b1393c1399155cf9d0b2);
+                var html_c253ed8f8af0e025a61a2d5a438526f3 = $(`<div id="html_c253ed8f8af0e025a61a2d5a438526f3" style="width: 100.0%; height: 100.0%;"><b>NCDR: 颱風路徑</b><br><b>位置：北緯 29.5°, 東經 125.3°</b></div>`)[0];
+                popup_b7318cdc65c30ad1a0f7e4c9ac0481ba.setContent(html_c253ed8f8af0e025a61a2d5a438526f3);
             
         
 
-        circle_marker_a3d0f147a9c54f00ea19dadd6a2e3328.bindPopup(popup_895b3a794a6963ffca722e3e73b827d3)
+        circle_marker_4d5456cacce8d7c8bf741198dae057e1.bindPopup(popup_b7318cdc65c30ad1a0f7e4c9ac0481ba)
         ;
 
         
     
     
-            circle_marker_a3d0f147a9c54f00ea19dadd6a2e3328.bindTooltip(
+            circle_marker_4d5456cacce8d7c8bf741198dae057e1.bindTooltip(
                 `<div>
                      NCDR: 颱風路徑 (北緯 29.5°, 東經 125.3°)
                  </div>`,
@@ -579,30 +577,30 @@ function switchTab(tabId) {
             );
         
     
-            var circle_marker_b5ecb57258a69677f61f3cf2f716888e = L.circleMarker(
+            var circle_marker_215fd7b119d7864d0b5431741ca239f9 = L.circleMarker(
                 [33.7000007629395, 131.399993896484],
                 {"bubblingMouseEvents": true, "color": "cadetblue", "dashArray": null, "dashOffset": null, "fill": true, "fillColor": "cadetblue", "fillOpacity": 1.0, "fillRule": "evenodd", "lineCap": "round", "lineJoin": "round", "opacity": 1.0, "radius": 5, "stroke": true, "weight": 3}
-            ).addTo(feature_group_3c60ab709b5b7eb3941ea70f06caad1c);
+            ).addTo(feature_group_015a21a269e9b60c195b7dadf70dd04e);
         
     
-        var popup_9dd4de798d1915c0c0cd127ebdbec642 = L.popup({
+        var popup_939eb44bf00ef49f06e82e44e4e7d5ca = L.popup({
   "maxWidth": 300,
 });
 
         
             
-                var html_043749afed92feddefa1dc06ca8841fd = $(`<div id="html_043749afed92feddefa1dc06ca8841fd" style="width: 100.0%; height: 100.0%;"><b>NCDR: 颱風路徑</b><br><b>位置：北緯 33.7°, 東經 131.4°</b></div>`)[0];
-                popup_9dd4de798d1915c0c0cd127ebdbec642.setContent(html_043749afed92feddefa1dc06ca8841fd);
+                var html_bed2164c21fb19ebdbe083187c8f8647 = $(`<div id="html_bed2164c21fb19ebdbe083187c8f8647" style="width: 100.0%; height: 100.0%;"><b>NCDR: 颱風路徑</b><br><b>位置：北緯 33.7°, 東經 131.4°</b></div>`)[0];
+                popup_939eb44bf00ef49f06e82e44e4e7d5ca.setContent(html_bed2164c21fb19ebdbe083187c8f8647);
             
         
 
-        circle_marker_b5ecb57258a69677f61f3cf2f716888e.bindPopup(popup_9dd4de798d1915c0c0cd127ebdbec642)
+        circle_marker_215fd7b119d7864d0b5431741ca239f9.bindPopup(popup_939eb44bf00ef49f06e82e44e4e7d5ca)
         ;
 
         
     
     
-            circle_marker_b5ecb57258a69677f61f3cf2f716888e.bindTooltip(
+            circle_marker_215fd7b119d7864d0b5431741ca239f9.bindTooltip(
                 `<div>
                      NCDR: 颱風路徑 (北緯 33.7°, 東經 131.4°)
                  </div>`,
@@ -612,13 +610,13 @@ function switchTab(tabId) {
             );
         
     
-            var poly_line_ae363ea27899e82e12b1b83cf67aa835 = L.polyline(
+            var poly_line_28196022538dc3f52690a75f372f8ace = L.polyline(
                 [[17.0, 133.0], [19.5, 128.3], [21.6, 125.5], [25.0, 123.9], [29.5, 125.3], [33.7, 131.4]],
                 {"bubblingMouseEvents": true, "color": "green", "dashArray": null, "dashOffset": null, "fill": false, "fillColor": "green", "fillOpacity": 0.2, "fillRule": "evenodd", "lineCap": "round", "lineJoin": "round", "noClip": false, "opacity": 1.0, "smoothFactor": 1.0, "stroke": true, "weight": 4}
-            ).addTo(feature_group_3c60ab709b5b7eb3941ea70f06caad1c);
+            ).addTo(feature_group_015a21a269e9b60c195b7dadf70dd04e);
         
     
-            poly_line_ae363ea27899e82e12b1b83cf67aa835.bindTooltip(
+            poly_line_28196022538dc3f52690a75f372f8ace.bindTooltip(
                 `<div>
                      <b>NCDR: JTWC</b>
                  </div>`,
@@ -628,30 +626,30 @@ function switchTab(tabId) {
             );
         
     
-            var circle_marker_a616fbdf89709a17d93527fc3a5b275f = L.circleMarker(
+            var circle_marker_0d04e3200a20d21bb1808baf164aa62a = L.circleMarker(
                 [17.0, 133.0],
                 {"bubblingMouseEvents": true, "color": "blue", "dashArray": null, "dashOffset": null, "fill": true, "fillColor": "blue", "fillOpacity": 1.0, "fillRule": "evenodd", "lineCap": "round", "lineJoin": "round", "opacity": 1.0, "radius": 5, "stroke": true, "weight": 3}
-            ).addTo(feature_group_3c60ab709b5b7eb3941ea70f06caad1c);
+            ).addTo(feature_group_015a21a269e9b60c195b7dadf70dd04e);
         
     
-        var popup_31d423932d9214c6b1ebea153a4ea821 = L.popup({
+        var popup_458082ed8016e1d235bb0aa0b13d0319 = L.popup({
   "maxWidth": 300,
 });
 
         
             
-                var html_263fd50c07bdee87e4b594ef0f9972e1 = $(`<div id="html_263fd50c07bdee87e4b594ef0f9972e1" style="width: 100.0%; height: 100.0%;"><b>NCDR: JMA發佈時間:10/20 20</b><br><b>位置：北緯 17.0°, 東經 133.0°</b></div>`)[0];
-                popup_31d423932d9214c6b1ebea153a4ea821.setContent(html_263fd50c07bdee87e4b594ef0f9972e1);
+                var html_3a0cc8b491347c9863784261dc67ab6d = $(`<div id="html_3a0cc8b491347c9863784261dc67ab6d" style="width: 100.0%; height: 100.0%;"><b>NCDR: JMA發佈時間:10/20 20</b><br><b>位置：北緯 17.0°, 東經 133.0°</b></div>`)[0];
+                popup_458082ed8016e1d235bb0aa0b13d0319.setContent(html_3a0cc8b491347c9863784261dc67ab6d);
             
         
 
-        circle_marker_a616fbdf89709a17d93527fc3a5b275f.bindPopup(popup_31d423932d9214c6b1ebea153a4ea821)
+        circle_marker_0d04e3200a20d21bb1808baf164aa62a.bindPopup(popup_458082ed8016e1d235bb0aa0b13d0319)
         ;
 
         
     
     
-            circle_marker_a616fbdf89709a17d93527fc3a5b275f.bindTooltip(
+            circle_marker_0d04e3200a20d21bb1808baf164aa62a.bindTooltip(
                 `<div>
                      NCDR: JMA發佈時間:10/20 20 (北緯 17.0°, 東經 133.0°)
                  </div>`,
@@ -661,30 +659,30 @@ function switchTab(tabId) {
             );
         
     
-            var circle_marker_7bebad84a80e450584ad50a4fbda3721 = L.circleMarker(
+            var circle_marker_1eb88cc723d757cbdbe29733628647f4 = L.circleMarker(
                 [19.5, 128.300003051758],
                 {"bubblingMouseEvents": true, "color": "cadetblue", "dashArray": null, "dashOffset": null, "fill": true, "fillColor": "cadetblue", "fillOpacity": 1.0, "fillRule": "evenodd", "lineCap": "round", "lineJoin": "round", "opacity": 1.0, "radius": 5, "stroke": true, "weight": 3}
-            ).addTo(feature_group_3c60ab709b5b7eb3941ea70f06caad1c);
+            ).addTo(feature_group_015a21a269e9b60c195b7dadf70dd04e);
         
     
-        var popup_4916da954a9ba73dafb5b9942fbb9960 = L.popup({
+        var popup_5797a571a20f65be6d91f67a9b6b672a = L.popup({
   "maxWidth": 300,
 });
 
         
             
-                var html_a5f840fdb5649bb5739588e64fa5a8a2 = $(`<div id="html_a5f840fdb5649bb5739588e64fa5a8a2" style="width: 100.0%; height: 100.0%;"><b>NCDR: 颱風路徑</b><br><b>位置：北緯 19.5°, 東經 128.3°</b></div>`)[0];
-                popup_4916da954a9ba73dafb5b9942fbb9960.setContent(html_a5f840fdb5649bb5739588e64fa5a8a2);
+                var html_0c69d806c4e6f03946a41d0db9af91cb = $(`<div id="html_0c69d806c4e6f03946a41d0db9af91cb" style="width: 100.0%; height: 100.0%;"><b>NCDR: 颱風路徑</b><br><b>位置：北緯 19.5°, 東經 128.3°</b></div>`)[0];
+                popup_5797a571a20f65be6d91f67a9b6b672a.setContent(html_0c69d806c4e6f03946a41d0db9af91cb);
             
         
 
-        circle_marker_7bebad84a80e450584ad50a4fbda3721.bindPopup(popup_4916da954a9ba73dafb5b9942fbb9960)
+        circle_marker_1eb88cc723d757cbdbe29733628647f4.bindPopup(popup_5797a571a20f65be6d91f67a9b6b672a)
         ;
 
         
     
     
-            circle_marker_7bebad84a80e450584ad50a4fbda3721.bindTooltip(
+            circle_marker_1eb88cc723d757cbdbe29733628647f4.bindTooltip(
                 `<div>
                      NCDR: 颱風路徑 (北緯 19.5°, 東經 128.3°)
                  </div>`,
@@ -694,30 +692,30 @@ function switchTab(tabId) {
             );
         
     
-            var circle_marker_d2e2dbeab5247e94490d97eee375a099 = L.circleMarker(
+            var circle_marker_c69793904427be707cca849c6c31f23b = L.circleMarker(
                 [21.2000007629395, 125.599998474121],
                 {"bubblingMouseEvents": true, "color": "cadetblue", "dashArray": null, "dashOffset": null, "fill": true, "fillColor": "cadetblue", "fillOpacity": 1.0, "fillRule": "evenodd", "lineCap": "round", "lineJoin": "round", "opacity": 1.0, "radius": 5, "stroke": true, "weight": 3}
-            ).addTo(feature_group_3c60ab709b5b7eb3941ea70f06caad1c);
+            ).addTo(feature_group_015a21a269e9b60c195b7dadf70dd04e);
         
     
-        var popup_cdba6903a8a5b57b8911f72b26fcc86a = L.popup({
+        var popup_0ddc9415ca72d8534e1eea793cb7f2ec = L.popup({
   "maxWidth": 300,
 });
 
         
             
-                var html_806eacd31be26eeccd0db1d40d60d6d9 = $(`<div id="html_806eacd31be26eeccd0db1d40d60d6d9" style="width: 100.0%; height: 100.0%;"><b>NCDR: 颱風路徑</b><br><b>位置：北緯 21.2°, 東經 125.6°</b></div>`)[0];
-                popup_cdba6903a8a5b57b8911f72b26fcc86a.setContent(html_806eacd31be26eeccd0db1d40d60d6d9);
+                var html_ed4972332354f3562e5798db639514db = $(`<div id="html_ed4972332354f3562e5798db639514db" style="width: 100.0%; height: 100.0%;"><b>NCDR: 颱風路徑</b><br><b>位置：北緯 21.2°, 東經 125.6°</b></div>`)[0];
+                popup_0ddc9415ca72d8534e1eea793cb7f2ec.setContent(html_ed4972332354f3562e5798db639514db);
             
         
 
-        circle_marker_d2e2dbeab5247e94490d97eee375a099.bindPopup(popup_cdba6903a8a5b57b8911f72b26fcc86a)
+        circle_marker_c69793904427be707cca849c6c31f23b.bindPopup(popup_0ddc9415ca72d8534e1eea793cb7f2ec)
         ;
 
         
     
     
-            circle_marker_d2e2dbeab5247e94490d97eee375a099.bindTooltip(
+            circle_marker_c69793904427be707cca849c6c31f23b.bindTooltip(
                 `<div>
                      NCDR: 颱風路徑 (北緯 21.2°, 東經 125.6°)
                  </div>`,
@@ -727,30 +725,30 @@ function switchTab(tabId) {
             );
         
     
-            var circle_marker_badec8046e1b59d8d0653e71f87a46de = L.circleMarker(
+            var circle_marker_a2af18ba6d451f01bc982fffc3b6695b = L.circleMarker(
                 [23.8999996185303, 122.800003051758],
                 {"bubblingMouseEvents": true, "color": "cadetblue", "dashArray": null, "dashOffset": null, "fill": true, "fillColor": "cadetblue", "fillOpacity": 1.0, "fillRule": "evenodd", "lineCap": "round", "lineJoin": "round", "opacity": 1.0, "radius": 5, "stroke": true, "weight": 3}
-            ).addTo(feature_group_3c60ab709b5b7eb3941ea70f06caad1c);
+            ).addTo(feature_group_015a21a269e9b60c195b7dadf70dd04e);
         
     
-        var popup_1e13b141400016190e9750db0bfd4310 = L.popup({
+        var popup_8d299951073a2384ac4f03578ba08993 = L.popup({
   "maxWidth": 300,
 });
 
         
             
-                var html_bb83095cefaa22b4df048ca262391171 = $(`<div id="html_bb83095cefaa22b4df048ca262391171" style="width: 100.0%; height: 100.0%;"><b>NCDR: 颱風路徑</b><br><b>位置：北緯 23.9°, 東經 122.8°</b></div>`)[0];
-                popup_1e13b141400016190e9750db0bfd4310.setContent(html_bb83095cefaa22b4df048ca262391171);
+                var html_cb9d3bde9efcf63affeccfee2525372b = $(`<div id="html_cb9d3bde9efcf63affeccfee2525372b" style="width: 100.0%; height: 100.0%;"><b>NCDR: 颱風路徑</b><br><b>位置：北緯 23.9°, 東經 122.8°</b></div>`)[0];
+                popup_8d299951073a2384ac4f03578ba08993.setContent(html_cb9d3bde9efcf63affeccfee2525372b);
             
         
 
-        circle_marker_badec8046e1b59d8d0653e71f87a46de.bindPopup(popup_1e13b141400016190e9750db0bfd4310)
+        circle_marker_a2af18ba6d451f01bc982fffc3b6695b.bindPopup(popup_8d299951073a2384ac4f03578ba08993)
         ;
 
         
     
     
-            circle_marker_badec8046e1b59d8d0653e71f87a46de.bindTooltip(
+            circle_marker_a2af18ba6d451f01bc982fffc3b6695b.bindTooltip(
                 `<div>
                      NCDR: 颱風路徑 (北緯 23.9°, 東經 122.8°)
                  </div>`,
@@ -760,30 +758,30 @@ function switchTab(tabId) {
             );
         
     
-            var circle_marker_57b0591b8c123c01565df0766bf8346a = L.circleMarker(
+            var circle_marker_728e8b4c33823a95d6f350aa2f4489eb = L.circleMarker(
                 [27.1000003814697, 122.0],
                 {"bubblingMouseEvents": true, "color": "cadetblue", "dashArray": null, "dashOffset": null, "fill": true, "fillColor": "cadetblue", "fillOpacity": 1.0, "fillRule": "evenodd", "lineCap": "round", "lineJoin": "round", "opacity": 1.0, "radius": 5, "stroke": true, "weight": 3}
-            ).addTo(feature_group_3c60ab709b5b7eb3941ea70f06caad1c);
+            ).addTo(feature_group_015a21a269e9b60c195b7dadf70dd04e);
         
     
-        var popup_c19511fbfe6be5cf3ff64c6361630824 = L.popup({
+        var popup_efee5420135cc009bb73532353da437a = L.popup({
   "maxWidth": 300,
 });
 
         
             
-                var html_963ef3b456c5b170acacfecfdb632ac6 = $(`<div id="html_963ef3b456c5b170acacfecfdb632ac6" style="width: 100.0%; height: 100.0%;"><b>NCDR: 颱風路徑</b><br><b>位置：北緯 27.1°, 東經 122.0°</b></div>`)[0];
-                popup_c19511fbfe6be5cf3ff64c6361630824.setContent(html_963ef3b456c5b170acacfecfdb632ac6);
+                var html_8f940b7e28c86a291fae0c2b64e2287d = $(`<div id="html_8f940b7e28c86a291fae0c2b64e2287d" style="width: 100.0%; height: 100.0%;"><b>NCDR: 颱風路徑</b><br><b>位置：北緯 27.1°, 東經 122.0°</b></div>`)[0];
+                popup_efee5420135cc009bb73532353da437a.setContent(html_8f940b7e28c86a291fae0c2b64e2287d);
             
         
 
-        circle_marker_57b0591b8c123c01565df0766bf8346a.bindPopup(popup_c19511fbfe6be5cf3ff64c6361630824)
+        circle_marker_728e8b4c33823a95d6f350aa2f4489eb.bindPopup(popup_efee5420135cc009bb73532353da437a)
         ;
 
         
     
     
-            circle_marker_57b0591b8c123c01565df0766bf8346a.bindTooltip(
+            circle_marker_728e8b4c33823a95d6f350aa2f4489eb.bindTooltip(
                 `<div>
                      NCDR: 颱風路徑 (北緯 27.1°, 東經 122.0°)
                  </div>`,
@@ -793,30 +791,30 @@ function switchTab(tabId) {
             );
         
     
-            var circle_marker_e804e44d9582c780115aa76030b97cae = L.circleMarker(
+            var circle_marker_81a762074c40d7f27020e7d175d61ada = L.circleMarker(
                 [32.0, 125.0],
                 {"bubblingMouseEvents": true, "color": "cadetblue", "dashArray": null, "dashOffset": null, "fill": true, "fillColor": "cadetblue", "fillOpacity": 1.0, "fillRule": "evenodd", "lineCap": "round", "lineJoin": "round", "opacity": 1.0, "radius": 5, "stroke": true, "weight": 3}
-            ).addTo(feature_group_3c60ab709b5b7eb3941ea70f06caad1c);
+            ).addTo(feature_group_015a21a269e9b60c195b7dadf70dd04e);
         
     
-        var popup_f55bf67774b15497384d68bfc17dfadd = L.popup({
+        var popup_7ad5e2da76ea729bf94771121f393109 = L.popup({
   "maxWidth": 300,
 });
 
         
             
-                var html_d6382510032520ea0967556836b2ec58 = $(`<div id="html_d6382510032520ea0967556836b2ec58" style="width: 100.0%; height: 100.0%;"><b>NCDR: 颱風路徑</b><br><b>位置：北緯 32.0°, 東經 125.0°</b></div>`)[0];
-                popup_f55bf67774b15497384d68bfc17dfadd.setContent(html_d6382510032520ea0967556836b2ec58);
+                var html_039f112504aeb0c380802d2cd2b39ba1 = $(`<div id="html_039f112504aeb0c380802d2cd2b39ba1" style="width: 100.0%; height: 100.0%;"><b>NCDR: 颱風路徑</b><br><b>位置：北緯 32.0°, 東經 125.0°</b></div>`)[0];
+                popup_7ad5e2da76ea729bf94771121f393109.setContent(html_039f112504aeb0c380802d2cd2b39ba1);
             
         
 
-        circle_marker_e804e44d9582c780115aa76030b97cae.bindPopup(popup_f55bf67774b15497384d68bfc17dfadd)
+        circle_marker_81a762074c40d7f27020e7d175d61ada.bindPopup(popup_7ad5e2da76ea729bf94771121f393109)
         ;
 
         
     
     
-            circle_marker_e804e44d9582c780115aa76030b97cae.bindTooltip(
+            circle_marker_81a762074c40d7f27020e7d175d61ada.bindTooltip(
                 `<div>
                      NCDR: 颱風路徑 (北緯 32.0°, 東經 125.0°)
                  </div>`,
@@ -826,13 +824,13 @@ function switchTab(tabId) {
             );
         
     
-            var poly_line_7774c698277f737ff919d3103a680f05 = L.polyline(
+            var poly_line_c8d96db7cb31d45bb1b34fd7a56769f1 = L.polyline(
                 [[17.0, 133.0], [19.5, 128.3], [21.2, 125.6], [23.9, 122.8], [27.1, 122.0], [32.0, 125.0]],
                 {"bubblingMouseEvents": true, "color": "blue", "dashArray": null, "dashOffset": null, "fill": false, "fillColor": "blue", "fillOpacity": 0.2, "fillRule": "evenodd", "lineCap": "round", "lineJoin": "round", "noClip": false, "opacity": 1.0, "smoothFactor": 1.0, "stroke": true, "weight": 4}
-            ).addTo(feature_group_3c60ab709b5b7eb3941ea70f06caad1c);
+            ).addTo(feature_group_015a21a269e9b60c195b7dadf70dd04e);
         
     
-            poly_line_7774c698277f737ff919d3103a680f05.bindTooltip(
+            poly_line_c8d96db7cb31d45bb1b34fd7a56769f1.bindTooltip(
                 `<div>
                      <b>NCDR: JMA</b>
                  </div>`,
@@ -842,30 +840,30 @@ function switchTab(tabId) {
             );
         
     
-            var circle_marker_6f59cd644a8e02b249056b06364975f9 = L.circleMarker(
+            var circle_marker_4984503bac2648a96c6ef39b6f6b5283 = L.circleMarker(
                 [17.0, 133.100006103516],
                 {"bubblingMouseEvents": true, "color": "cadetblue", "dashArray": null, "dashOffset": null, "fill": true, "fillColor": "cadetblue", "fillOpacity": 1.0, "fillRule": "evenodd", "lineCap": "round", "lineJoin": "round", "opacity": 1.0, "radius": 5, "stroke": true, "weight": 3}
-            ).addTo(feature_group_3c60ab709b5b7eb3941ea70f06caad1c);
+            ).addTo(feature_group_015a21a269e9b60c195b7dadf70dd04e);
         
     
-        var popup_da8b4391a229235ace38714b3818a8e7 = L.popup({
+        var popup_293ec4f69447aab241628b005ead1991 = L.popup({
   "maxWidth": 300,
 });
 
         
             
-                var html_7a7528b210863f6c6b69aeed62351c92 = $(`<div id="html_7a7528b210863f6c6b69aeed62351c92" style="width: 100.0%; height: 100.0%;"><b>NCDR: NMC發佈時間:10/20 20</b><br><b>位置：北緯 17.0°, 東經 133.1°</b></div>`)[0];
-                popup_da8b4391a229235ace38714b3818a8e7.setContent(html_7a7528b210863f6c6b69aeed62351c92);
+                var html_6ee3c2cb25c1fcab9675a52437930a14 = $(`<div id="html_6ee3c2cb25c1fcab9675a52437930a14" style="width: 100.0%; height: 100.0%;"><b>NCDR: NMC發佈時間:10/20 20</b><br><b>位置：北緯 17.0°, 東經 133.1°</b></div>`)[0];
+                popup_293ec4f69447aab241628b005ead1991.setContent(html_6ee3c2cb25c1fcab9675a52437930a14);
             
         
 
-        circle_marker_6f59cd644a8e02b249056b06364975f9.bindPopup(popup_da8b4391a229235ace38714b3818a8e7)
+        circle_marker_4984503bac2648a96c6ef39b6f6b5283.bindPopup(popup_293ec4f69447aab241628b005ead1991)
         ;
 
         
     
     
-            circle_marker_6f59cd644a8e02b249056b06364975f9.bindTooltip(
+            circle_marker_4984503bac2648a96c6ef39b6f6b5283.bindTooltip(
                 `<div>
                      NCDR: NMC發佈時間:10/20 20 (北緯 17.0°, 東經 133.1°)
                  </div>`,
@@ -875,30 +873,30 @@ function switchTab(tabId) {
             );
         
     
-            var circle_marker_652b95cfa55ebc3c2ee417165287c3bb = L.circleMarker(
+            var circle_marker_7f95dab7f1a3b58969bafb5bfa826724 = L.circleMarker(
                 [19.3999996185303, 128.600006103516],
                 {"bubblingMouseEvents": true, "color": "cadetblue", "dashArray": null, "dashOffset": null, "fill": true, "fillColor": "cadetblue", "fillOpacity": 1.0, "fillRule": "evenodd", "lineCap": "round", "lineJoin": "round", "opacity": 1.0, "radius": 5, "stroke": true, "weight": 3}
-            ).addTo(feature_group_3c60ab709b5b7eb3941ea70f06caad1c);
+            ).addTo(feature_group_015a21a269e9b60c195b7dadf70dd04e);
         
     
-        var popup_d690c9bb398f14dce4d92ceb4fb41adf = L.popup({
+        var popup_0992bdf7e62bfb3187815e54a84ae04a = L.popup({
   "maxWidth": 300,
 });
 
         
             
-                var html_1cc828385c0d7b3c232e85f43d62065f = $(`<div id="html_1cc828385c0d7b3c232e85f43d62065f" style="width: 100.0%; height: 100.0%;"><b>NCDR: 颱風路徑</b><br><b>位置：北緯 19.4°, 東經 128.6°</b></div>`)[0];
-                popup_d690c9bb398f14dce4d92ceb4fb41adf.setContent(html_1cc828385c0d7b3c232e85f43d62065f);
+                var html_0f85dd9f0712686b6e0aecda386dd783 = $(`<div id="html_0f85dd9f0712686b6e0aecda386dd783" style="width: 100.0%; height: 100.0%;"><b>NCDR: 颱風路徑</b><br><b>位置：北緯 19.4°, 東經 128.6°</b></div>`)[0];
+                popup_0992bdf7e62bfb3187815e54a84ae04a.setContent(html_0f85dd9f0712686b6e0aecda386dd783);
             
         
 
-        circle_marker_652b95cfa55ebc3c2ee417165287c3bb.bindPopup(popup_d690c9bb398f14dce4d92ceb4fb41adf)
+        circle_marker_7f95dab7f1a3b58969bafb5bfa826724.bindPopup(popup_0992bdf7e62bfb3187815e54a84ae04a)
         ;
 
         
     
     
-            circle_marker_652b95cfa55ebc3c2ee417165287c3bb.bindTooltip(
+            circle_marker_7f95dab7f1a3b58969bafb5bfa826724.bindTooltip(
                 `<div>
                      NCDR: 颱風路徑 (北緯 19.4°, 東經 128.6°)
                  </div>`,
@@ -908,30 +906,30 @@ function switchTab(tabId) {
             );
         
     
-            var circle_marker_624b7a84cb4d27ab6f9774cc5a9bb617 = L.circleMarker(
+            var circle_marker_23c9659400186365cf2322a0b515cb2e = L.circleMarker(
                 [21.2999992370605, 125.800003051758],
                 {"bubblingMouseEvents": true, "color": "cadetblue", "dashArray": null, "dashOffset": null, "fill": true, "fillColor": "cadetblue", "fillOpacity": 1.0, "fillRule": "evenodd", "lineCap": "round", "lineJoin": "round", "opacity": 1.0, "radius": 5, "stroke": true, "weight": 3}
-            ).addTo(feature_group_3c60ab709b5b7eb3941ea70f06caad1c);
+            ).addTo(feature_group_015a21a269e9b60c195b7dadf70dd04e);
         
     
-        var popup_02201b776cbd5ebde83b08466b7a4356 = L.popup({
+        var popup_c9b336ee22c98c904815c98485f540a6 = L.popup({
   "maxWidth": 300,
 });
 
         
             
-                var html_533120cc22902ca7b71ac59204611afc = $(`<div id="html_533120cc22902ca7b71ac59204611afc" style="width: 100.0%; height: 100.0%;"><b>NCDR: 颱風路徑</b><br><b>位置：北緯 21.3°, 東經 125.8°</b></div>`)[0];
-                popup_02201b776cbd5ebde83b08466b7a4356.setContent(html_533120cc22902ca7b71ac59204611afc);
+                var html_a0642f873d1808adbf154f9f2126bd5b = $(`<div id="html_a0642f873d1808adbf154f9f2126bd5b" style="width: 100.0%; height: 100.0%;"><b>NCDR: 颱風路徑</b><br><b>位置：北緯 21.3°, 東經 125.8°</b></div>`)[0];
+                popup_c9b336ee22c98c904815c98485f540a6.setContent(html_a0642f873d1808adbf154f9f2126bd5b);
             
         
 
-        circle_marker_624b7a84cb4d27ab6f9774cc5a9bb617.bindPopup(popup_02201b776cbd5ebde83b08466b7a4356)
+        circle_marker_23c9659400186365cf2322a0b515cb2e.bindPopup(popup_c9b336ee22c98c904815c98485f540a6)
         ;
 
         
     
     
-            circle_marker_624b7a84cb4d27ab6f9774cc5a9bb617.bindTooltip(
+            circle_marker_23c9659400186365cf2322a0b515cb2e.bindTooltip(
                 `<div>
                      NCDR: 颱風路徑 (北緯 21.3°, 東經 125.8°)
                  </div>`,
@@ -941,30 +939,30 @@ function switchTab(tabId) {
             );
         
     
-            var circle_marker_452d86eb43c3c6bad3b19cccdf857777 = L.circleMarker(
+            var circle_marker_987a72656493361d38f85e8891906dfb = L.circleMarker(
                 [24.2999992370605, 123.800003051758],
                 {"bubblingMouseEvents": true, "color": "cadetblue", "dashArray": null, "dashOffset": null, "fill": true, "fillColor": "cadetblue", "fillOpacity": 1.0, "fillRule": "evenodd", "lineCap": "round", "lineJoin": "round", "opacity": 1.0, "radius": 5, "stroke": true, "weight": 3}
-            ).addTo(feature_group_3c60ab709b5b7eb3941ea70f06caad1c);
+            ).addTo(feature_group_015a21a269e9b60c195b7dadf70dd04e);
         
     
-        var popup_ddd9e53683dd105a28ecaf51290bbbc0 = L.popup({
+        var popup_9ecad3ecdb2580f9b466c46012b70138 = L.popup({
   "maxWidth": 300,
 });
 
         
             
-                var html_50fcbab2a78d695561fe741a7a0b9a9e = $(`<div id="html_50fcbab2a78d695561fe741a7a0b9a9e" style="width: 100.0%; height: 100.0%;"><b>NCDR: 颱風路徑</b><br><b>位置：北緯 24.3°, 東經 123.8°</b></div>`)[0];
-                popup_ddd9e53683dd105a28ecaf51290bbbc0.setContent(html_50fcbab2a78d695561fe741a7a0b9a9e);
+                var html_71e5d4ee3f3199c4b1d093b6020c699e = $(`<div id="html_71e5d4ee3f3199c4b1d093b6020c699e" style="width: 100.0%; height: 100.0%;"><b>NCDR: 颱風路徑</b><br><b>位置：北緯 24.3°, 東經 123.8°</b></div>`)[0];
+                popup_9ecad3ecdb2580f9b466c46012b70138.setContent(html_71e5d4ee3f3199c4b1d093b6020c699e);
             
         
 
-        circle_marker_452d86eb43c3c6bad3b19cccdf857777.bindPopup(popup_ddd9e53683dd105a28ecaf51290bbbc0)
+        circle_marker_987a72656493361d38f85e8891906dfb.bindPopup(popup_9ecad3ecdb2580f9b466c46012b70138)
         ;
 
         
     
     
-            circle_marker_452d86eb43c3c6bad3b19cccdf857777.bindTooltip(
+            circle_marker_987a72656493361d38f85e8891906dfb.bindTooltip(
                 `<div>
                      NCDR: 颱風路徑 (北緯 24.3°, 東經 123.8°)
                  </div>`,
@@ -974,30 +972,30 @@ function switchTab(tabId) {
             );
         
     
-            var circle_marker_fe702cda803b8e6934cadc435ec626fb = L.circleMarker(
+            var circle_marker_2be6eacb545d36b745f9a0b148b19d62 = L.circleMarker(
                 [27.3999996185303, 123.599998474121],
                 {"bubblingMouseEvents": true, "color": "cadetblue", "dashArray": null, "dashOffset": null, "fill": true, "fillColor": "cadetblue", "fillOpacity": 1.0, "fillRule": "evenodd", "lineCap": "round", "lineJoin": "round", "opacity": 1.0, "radius": 5, "stroke": true, "weight": 3}
-            ).addTo(feature_group_3c60ab709b5b7eb3941ea70f06caad1c);
+            ).addTo(feature_group_015a21a269e9b60c195b7dadf70dd04e);
         
     
-        var popup_1e36892272ef05bdc7ea071af3102794 = L.popup({
+        var popup_eb431169ec18bcd242aa8b3aa33a55fb = L.popup({
   "maxWidth": 300,
 });
 
         
             
-                var html_9dfa870e4b0222f8dfab11c9d25b609d = $(`<div id="html_9dfa870e4b0222f8dfab11c9d25b609d" style="width: 100.0%; height: 100.0%;"><b>NCDR: 颱風路徑</b><br><b>位置：北緯 27.4°, 東經 123.6°</b></div>`)[0];
-                popup_1e36892272ef05bdc7ea071af3102794.setContent(html_9dfa870e4b0222f8dfab11c9d25b609d);
+                var html_6b90ed81994ab1e9ecf2fd6d593dc277 = $(`<div id="html_6b90ed81994ab1e9ecf2fd6d593dc277" style="width: 100.0%; height: 100.0%;"><b>NCDR: 颱風路徑</b><br><b>位置：北緯 27.4°, 東經 123.6°</b></div>`)[0];
+                popup_eb431169ec18bcd242aa8b3aa33a55fb.setContent(html_6b90ed81994ab1e9ecf2fd6d593dc277);
             
         
 
-        circle_marker_fe702cda803b8e6934cadc435ec626fb.bindPopup(popup_1e36892272ef05bdc7ea071af3102794)
+        circle_marker_2be6eacb545d36b745f9a0b148b19d62.bindPopup(popup_eb431169ec18bcd242aa8b3aa33a55fb)
         ;
 
         
     
     
-            circle_marker_fe702cda803b8e6934cadc435ec626fb.bindTooltip(
+            circle_marker_2be6eacb545d36b745f9a0b148b19d62.bindTooltip(
                 `<div>
                      NCDR: 颱風路徑 (北緯 27.4°, 東經 123.6°)
                  </div>`,
@@ -1007,30 +1005,30 @@ function switchTab(tabId) {
             );
         
     
-            var circle_marker_44518b7912fd02820d0579dd5ab8e2be = L.circleMarker(
+            var circle_marker_a3e181319b11acdba76a8488aa3a2362 = L.circleMarker(
                 [29.5, 125.199996948242],
                 {"bubblingMouseEvents": true, "color": "cadetblue", "dashArray": null, "dashOffset": null, "fill": true, "fillColor": "cadetblue", "fillOpacity": 1.0, "fillRule": "evenodd", "lineCap": "round", "lineJoin": "round", "opacity": 1.0, "radius": 5, "stroke": true, "weight": 3}
-            ).addTo(feature_group_3c60ab709b5b7eb3941ea70f06caad1c);
+            ).addTo(feature_group_015a21a269e9b60c195b7dadf70dd04e);
         
     
-        var popup_f047c6f5186a397401c20b15097b08f3 = L.popup({
+        var popup_10ec20791e167e4da7da4328e8e9a241 = L.popup({
   "maxWidth": 300,
 });
 
         
             
-                var html_c692b25c309850d16c09acd62f01f415 = $(`<div id="html_c692b25c309850d16c09acd62f01f415" style="width: 100.0%; height: 100.0%;"><b>NCDR: 颱風路徑</b><br><b>位置：北緯 29.5°, 東經 125.2°</b></div>`)[0];
-                popup_f047c6f5186a397401c20b15097b08f3.setContent(html_c692b25c309850d16c09acd62f01f415);
+                var html_2fb3a0f7d5ce35bf8502742020da56d6 = $(`<div id="html_2fb3a0f7d5ce35bf8502742020da56d6" style="width: 100.0%; height: 100.0%;"><b>NCDR: 颱風路徑</b><br><b>位置：北緯 29.5°, 東經 125.2°</b></div>`)[0];
+                popup_10ec20791e167e4da7da4328e8e9a241.setContent(html_2fb3a0f7d5ce35bf8502742020da56d6);
             
         
 
-        circle_marker_44518b7912fd02820d0579dd5ab8e2be.bindPopup(popup_f047c6f5186a397401c20b15097b08f3)
+        circle_marker_a3e181319b11acdba76a8488aa3a2362.bindPopup(popup_10ec20791e167e4da7da4328e8e9a241)
         ;
 
         
     
     
-            circle_marker_44518b7912fd02820d0579dd5ab8e2be.bindTooltip(
+            circle_marker_a3e181319b11acdba76a8488aa3a2362.bindTooltip(
                 `<div>
                      NCDR: 颱風路徑 (北緯 29.5°, 東經 125.2°)
                  </div>`,
@@ -1040,13 +1038,13 @@ function switchTab(tabId) {
             );
         
     
-            var poly_line_198b77da6ee43569c6dbecae387d2e84 = L.polyline(
+            var poly_line_2a6e7c3f51f046f6b0b2aa16ff809c6c = L.polyline(
                 [[17.0, 133.1], [19.4, 128.6], [21.3, 125.8], [24.3, 123.8], [27.4, 123.6], [29.5, 125.2]],
                 {"bubblingMouseEvents": true, "color": "cadetblue", "dashArray": null, "dashOffset": null, "fill": false, "fillColor": "cadetblue", "fillOpacity": 0.2, "fillRule": "evenodd", "lineCap": "round", "lineJoin": "round", "noClip": false, "opacity": 1.0, "smoothFactor": 1.0, "stroke": true, "weight": 4}
-            ).addTo(feature_group_3c60ab709b5b7eb3941ea70f06caad1c);
+            ).addTo(feature_group_015a21a269e9b60c195b7dadf70dd04e);
         
     
-            poly_line_198b77da6ee43569c6dbecae387d2e84.bindTooltip(
+            poly_line_2a6e7c3f51f046f6b0b2aa16ff809c6c.bindTooltip(
                 `<div>
                      <b>NCDR: NMC</b>
                  </div>`,
@@ -1056,30 +1054,30 @@ function switchTab(tabId) {
             );
         
     
-            var circle_marker_93f777e075226d2e5fd51f4650e2b244 = L.circleMarker(
+            var circle_marker_56cf855e7a39d2f53d43f06fa13b740b = L.circleMarker(
                 [16.8999996185303, 133.0],
                 {"bubblingMouseEvents": true, "color": "red", "dashArray": null, "dashOffset": null, "fill": true, "fillColor": "red", "fillOpacity": 1.0, "fillRule": "evenodd", "lineCap": "round", "lineJoin": "round", "opacity": 1.0, "radius": 5, "stroke": true, "weight": 3}
-            ).addTo(feature_group_3c60ab709b5b7eb3941ea70f06caad1c);
+            ).addTo(feature_group_015a21a269e9b60c195b7dadf70dd04e);
         
     
-        var popup_761169ce41780931a72f14bb5118615e = L.popup({
+        var popup_6c496992a73e17d0835576b3eb701317 = L.popup({
   "maxWidth": 300,
 });
 
         
             
-                var html_767e24376d92224b91d104936a41148d = $(`<div id="html_767e24376d92224b91d104936a41148d" style="width: 100.0%; height: 100.0%;"><b>NCDR: CWA發佈時間:10/20 20</b><br><b>位置：北緯 16.9°, 東經 133.0°</b></div>`)[0];
-                popup_761169ce41780931a72f14bb5118615e.setContent(html_767e24376d92224b91d104936a41148d);
+                var html_80e6409eb68e63c8b8f1f78981f38f86 = $(`<div id="html_80e6409eb68e63c8b8f1f78981f38f86" style="width: 100.0%; height: 100.0%;"><b>NCDR: CWA發佈時間:10/20 20</b><br><b>位置：北緯 16.9°, 東經 133.0°</b></div>`)[0];
+                popup_6c496992a73e17d0835576b3eb701317.setContent(html_80e6409eb68e63c8b8f1f78981f38f86);
             
         
 
-        circle_marker_93f777e075226d2e5fd51f4650e2b244.bindPopup(popup_761169ce41780931a72f14bb5118615e)
+        circle_marker_56cf855e7a39d2f53d43f06fa13b740b.bindPopup(popup_6c496992a73e17d0835576b3eb701317)
         ;
 
         
     
     
-            circle_marker_93f777e075226d2e5fd51f4650e2b244.bindTooltip(
+            circle_marker_56cf855e7a39d2f53d43f06fa13b740b.bindTooltip(
                 `<div>
                      NCDR: CWA發佈時間:10/20 20 (北緯 16.9°, 東經 133.0°)
                  </div>`,
@@ -1089,30 +1087,30 @@ function switchTab(tabId) {
             );
         
     
-            var circle_marker_3ac04b423ce261936e5f5665b3da22f9 = L.circleMarker(
+            var circle_marker_6e3da52d7d9038d23701fe27bb707bea = L.circleMarker(
                 [19.5, 128.399993896484],
                 {"bubblingMouseEvents": true, "color": "cadetblue", "dashArray": null, "dashOffset": null, "fill": true, "fillColor": "cadetblue", "fillOpacity": 1.0, "fillRule": "evenodd", "lineCap": "round", "lineJoin": "round", "opacity": 1.0, "radius": 5, "stroke": true, "weight": 3}
-            ).addTo(feature_group_3c60ab709b5b7eb3941ea70f06caad1c);
+            ).addTo(feature_group_015a21a269e9b60c195b7dadf70dd04e);
         
     
-        var popup_2ff6398a2c29c72b89f04a453eea891f = L.popup({
+        var popup_39fbf81fa7c30c884f3e821b50974147 = L.popup({
   "maxWidth": 300,
 });
 
         
             
-                var html_8f5a6a1e185501a70054b026efc363cb = $(`<div id="html_8f5a6a1e185501a70054b026efc363cb" style="width: 100.0%; height: 100.0%;"><b>NCDR: 颱風路徑</b><br><b>位置：北緯 19.5°, 東經 128.4°</b></div>`)[0];
-                popup_2ff6398a2c29c72b89f04a453eea891f.setContent(html_8f5a6a1e185501a70054b026efc363cb);
+                var html_2ee09efdcbc2c326879f71efa69c7175 = $(`<div id="html_2ee09efdcbc2c326879f71efa69c7175" style="width: 100.0%; height: 100.0%;"><b>NCDR: 颱風路徑</b><br><b>位置：北緯 19.5°, 東經 128.4°</b></div>`)[0];
+                popup_39fbf81fa7c30c884f3e821b50974147.setContent(html_2ee09efdcbc2c326879f71efa69c7175);
             
         
 
-        circle_marker_3ac04b423ce261936e5f5665b3da22f9.bindPopup(popup_2ff6398a2c29c72b89f04a453eea891f)
+        circle_marker_6e3da52d7d9038d23701fe27bb707bea.bindPopup(popup_39fbf81fa7c30c884f3e821b50974147)
         ;
 
         
     
     
-            circle_marker_3ac04b423ce261936e5f5665b3da22f9.bindTooltip(
+            circle_marker_6e3da52d7d9038d23701fe27bb707bea.bindTooltip(
                 `<div>
                      NCDR: 颱風路徑 (北緯 19.5°, 東經 128.4°)
                  </div>`,
@@ -1122,30 +1120,30 @@ function switchTab(tabId) {
             );
         
     
-            var circle_marker_a5690eb88dd0f3e3b723efeceef2712e = L.circleMarker(
+            var circle_marker_cb631af5d7e547f54600b0421f6deafa = L.circleMarker(
                 [21.6000003814697, 125.699996948242],
                 {"bubblingMouseEvents": true, "color": "cadetblue", "dashArray": null, "dashOffset": null, "fill": true, "fillColor": "cadetblue", "fillOpacity": 1.0, "fillRule": "evenodd", "lineCap": "round", "lineJoin": "round", "opacity": 1.0, "radius": 5, "stroke": true, "weight": 3}
-            ).addTo(feature_group_3c60ab709b5b7eb3941ea70f06caad1c);
+            ).addTo(feature_group_015a21a269e9b60c195b7dadf70dd04e);
         
     
-        var popup_70b95c4f15b127295397f282814a413a = L.popup({
+        var popup_f708d6b5a5995e0d4b7a2617f676fd27 = L.popup({
   "maxWidth": 300,
 });
 
         
             
-                var html_7f6dbe064cfafe761f403311cc4be8b5 = $(`<div id="html_7f6dbe064cfafe761f403311cc4be8b5" style="width: 100.0%; height: 100.0%;"><b>NCDR: 颱風路徑</b><br><b>位置：北緯 21.6°, 東經 125.7°</b></div>`)[0];
-                popup_70b95c4f15b127295397f282814a413a.setContent(html_7f6dbe064cfafe761f403311cc4be8b5);
+                var html_d5a2f104a03336b1642197e5796706d6 = $(`<div id="html_d5a2f104a03336b1642197e5796706d6" style="width: 100.0%; height: 100.0%;"><b>NCDR: 颱風路徑</b><br><b>位置：北緯 21.6°, 東經 125.7°</b></div>`)[0];
+                popup_f708d6b5a5995e0d4b7a2617f676fd27.setContent(html_d5a2f104a03336b1642197e5796706d6);
             
         
 
-        circle_marker_a5690eb88dd0f3e3b723efeceef2712e.bindPopup(popup_70b95c4f15b127295397f282814a413a)
+        circle_marker_cb631af5d7e547f54600b0421f6deafa.bindPopup(popup_f708d6b5a5995e0d4b7a2617f676fd27)
         ;
 
         
     
     
-            circle_marker_a5690eb88dd0f3e3b723efeceef2712e.bindTooltip(
+            circle_marker_cb631af5d7e547f54600b0421f6deafa.bindTooltip(
                 `<div>
                      NCDR: 颱風路徑 (北緯 21.6°, 東經 125.7°)
                  </div>`,
@@ -1155,30 +1153,30 @@ function switchTab(tabId) {
             );
         
     
-            var circle_marker_bb614317d85b269c5fa3c6b3c3ca7e5c = L.circleMarker(
+            var circle_marker_ac94908afda9dfc03dad71623bacb3ac = L.circleMarker(
                 [25.1000003814697, 124.199996948242],
                 {"bubblingMouseEvents": true, "color": "cadetblue", "dashArray": null, "dashOffset": null, "fill": true, "fillColor": "cadetblue", "fillOpacity": 1.0, "fillRule": "evenodd", "lineCap": "round", "lineJoin": "round", "opacity": 1.0, "radius": 5, "stroke": true, "weight": 3}
-            ).addTo(feature_group_3c60ab709b5b7eb3941ea70f06caad1c);
+            ).addTo(feature_group_015a21a269e9b60c195b7dadf70dd04e);
         
     
-        var popup_b21dd594ea5186ab357c6b3cb898a1ee = L.popup({
+        var popup_ccb0127667848711618702e17f604bfb = L.popup({
   "maxWidth": 300,
 });
 
         
             
-                var html_561b1ba8bb07d7267655f30846891460 = $(`<div id="html_561b1ba8bb07d7267655f30846891460" style="width: 100.0%; height: 100.0%;"><b>NCDR: 颱風路徑</b><br><b>位置：北緯 25.1°, 東經 124.2°</b></div>`)[0];
-                popup_b21dd594ea5186ab357c6b3cb898a1ee.setContent(html_561b1ba8bb07d7267655f30846891460);
+                var html_593f70833cfc306dccf8064fa7374233 = $(`<div id="html_593f70833cfc306dccf8064fa7374233" style="width: 100.0%; height: 100.0%;"><b>NCDR: 颱風路徑</b><br><b>位置：北緯 25.1°, 東經 124.2°</b></div>`)[0];
+                popup_ccb0127667848711618702e17f604bfb.setContent(html_593f70833cfc306dccf8064fa7374233);
             
         
 
-        circle_marker_bb614317d85b269c5fa3c6b3c3ca7e5c.bindPopup(popup_b21dd594ea5186ab357c6b3cb898a1ee)
+        circle_marker_ac94908afda9dfc03dad71623bacb3ac.bindPopup(popup_ccb0127667848711618702e17f604bfb)
         ;
 
         
     
     
-            circle_marker_bb614317d85b269c5fa3c6b3c3ca7e5c.bindTooltip(
+            circle_marker_ac94908afda9dfc03dad71623bacb3ac.bindTooltip(
                 `<div>
                      NCDR: 颱風路徑 (北緯 25.1°, 東經 124.2°)
                  </div>`,
@@ -1188,30 +1186,30 @@ function switchTab(tabId) {
             );
         
     
-            var circle_marker_9775535bc9b9246de24cdd7165abdaf1 = L.circleMarker(
+            var circle_marker_23cbb6fb2e0f29fb943d27d654cae970 = L.circleMarker(
                 [30.2000007629395, 126.199996948242],
                 {"bubblingMouseEvents": true, "color": "cadetblue", "dashArray": null, "dashOffset": null, "fill": true, "fillColor": "cadetblue", "fillOpacity": 1.0, "fillRule": "evenodd", "lineCap": "round", "lineJoin": "round", "opacity": 1.0, "radius": 5, "stroke": true, "weight": 3}
-            ).addTo(feature_group_3c60ab709b5b7eb3941ea70f06caad1c);
+            ).addTo(feature_group_015a21a269e9b60c195b7dadf70dd04e);
         
     
-        var popup_a787278210024ac9a2c419bb21afc715 = L.popup({
+        var popup_f4ef403c1034ce5989bf0eba0f5cfad9 = L.popup({
   "maxWidth": 300,
 });
 
         
             
-                var html_4e2706fc86f2097d4f75ff181b00768a = $(`<div id="html_4e2706fc86f2097d4f75ff181b00768a" style="width: 100.0%; height: 100.0%;"><b>NCDR: 颱風路徑</b><br><b>位置：北緯 30.2°, 東經 126.2°</b></div>`)[0];
-                popup_a787278210024ac9a2c419bb21afc715.setContent(html_4e2706fc86f2097d4f75ff181b00768a);
+                var html_2f5e9b4d0bc65b3b40b18cad532ebf27 = $(`<div id="html_2f5e9b4d0bc65b3b40b18cad532ebf27" style="width: 100.0%; height: 100.0%;"><b>NCDR: 颱風路徑</b><br><b>位置：北緯 30.2°, 東經 126.2°</b></div>`)[0];
+                popup_f4ef403c1034ce5989bf0eba0f5cfad9.setContent(html_2f5e9b4d0bc65b3b40b18cad532ebf27);
             
         
 
-        circle_marker_9775535bc9b9246de24cdd7165abdaf1.bindPopup(popup_a787278210024ac9a2c419bb21afc715)
+        circle_marker_23cbb6fb2e0f29fb943d27d654cae970.bindPopup(popup_f4ef403c1034ce5989bf0eba0f5cfad9)
         ;
 
         
     
     
-            circle_marker_9775535bc9b9246de24cdd7165abdaf1.bindTooltip(
+            circle_marker_23cbb6fb2e0f29fb943d27d654cae970.bindTooltip(
                 `<div>
                      NCDR: 颱風路徑 (北緯 30.2°, 東經 126.2°)
                  </div>`,
@@ -1221,30 +1219,30 @@ function switchTab(tabId) {
             );
         
     
-            var circle_marker_f6689ff5634d083ba0271c6ec757b4c9 = L.circleMarker(
+            var circle_marker_8651744b468143fa3561bf5343ab3822 = L.circleMarker(
                 [34.9000015258789, 135.899993896484],
                 {"bubblingMouseEvents": true, "color": "cadetblue", "dashArray": null, "dashOffset": null, "fill": true, "fillColor": "cadetblue", "fillOpacity": 1.0, "fillRule": "evenodd", "lineCap": "round", "lineJoin": "round", "opacity": 1.0, "radius": 5, "stroke": true, "weight": 3}
-            ).addTo(feature_group_3c60ab709b5b7eb3941ea70f06caad1c);
+            ).addTo(feature_group_015a21a269e9b60c195b7dadf70dd04e);
         
     
-        var popup_260231f9e4f018bd9c2cc5ca7b46874d = L.popup({
+        var popup_c5b19e7a8c3a9e4dd85271d6130bb4fe = L.popup({
   "maxWidth": 300,
 });
 
         
             
-                var html_1ab4d5dd727dd13991f2173a4fe2bf04 = $(`<div id="html_1ab4d5dd727dd13991f2173a4fe2bf04" style="width: 100.0%; height: 100.0%;"><b>NCDR: 颱風路徑</b><br><b>位置：北緯 34.9°, 東經 135.9°</b></div>`)[0];
-                popup_260231f9e4f018bd9c2cc5ca7b46874d.setContent(html_1ab4d5dd727dd13991f2173a4fe2bf04);
+                var html_e6adb38cd90f4054f301e50e1a35065d = $(`<div id="html_e6adb38cd90f4054f301e50e1a35065d" style="width: 100.0%; height: 100.0%;"><b>NCDR: 颱風路徑</b><br><b>位置：北緯 34.9°, 東經 135.9°</b></div>`)[0];
+                popup_c5b19e7a8c3a9e4dd85271d6130bb4fe.setContent(html_e6adb38cd90f4054f301e50e1a35065d);
             
         
 
-        circle_marker_f6689ff5634d083ba0271c6ec757b4c9.bindPopup(popup_260231f9e4f018bd9c2cc5ca7b46874d)
+        circle_marker_8651744b468143fa3561bf5343ab3822.bindPopup(popup_c5b19e7a8c3a9e4dd85271d6130bb4fe)
         ;
 
         
     
     
-            circle_marker_f6689ff5634d083ba0271c6ec757b4c9.bindTooltip(
+            circle_marker_8651744b468143fa3561bf5343ab3822.bindTooltip(
                 `<div>
                      NCDR: 颱風路徑 (北緯 34.9°, 東經 135.9°)
                  </div>`,
@@ -1254,13 +1252,13 @@ function switchTab(tabId) {
             );
         
     
-            var poly_line_f588a05deda34bfb9a563b78b53c07db = L.polyline(
+            var poly_line_65bbf08d702a1e6676fca7a113c0f08f = L.polyline(
                 [[16.9, 133.0], [19.5, 128.4], [21.6, 125.7], [25.1, 124.2], [30.2, 126.2], [34.9, 135.9]],
                 {"bubblingMouseEvents": true, "color": "red", "dashArray": null, "dashOffset": null, "fill": false, "fillColor": "red", "fillOpacity": 0.2, "fillRule": "evenodd", "lineCap": "round", "lineJoin": "round", "noClip": false, "opacity": 1.0, "smoothFactor": 1.0, "stroke": true, "weight": 4}
-            ).addTo(feature_group_3c60ab709b5b7eb3941ea70f06caad1c);
+            ).addTo(feature_group_015a21a269e9b60c195b7dadf70dd04e);
         
     
-            poly_line_f588a05deda34bfb9a563b78b53c07db.bindTooltip(
+            poly_line_65bbf08d702a1e6676fca7a113c0f08f.bindTooltip(
                 `<div>
                      <b>NCDR: CWA</b>
                  </div>`,
@@ -1270,30 +1268,30 @@ function switchTab(tabId) {
             );
         
     
-            var circle_marker_d9a3344dbd44a476b8ef6ea80ec7cb49 = L.circleMarker(
+            var circle_marker_640c9dfe8bc230fe4fba7b95afe53592 = L.circleMarker(
                 [17.0, 133.100006103516],
                 {"bubblingMouseEvents": true, "color": "purple", "dashArray": null, "dashOffset": null, "fill": true, "fillColor": "purple", "fillOpacity": 1.0, "fillRule": "evenodd", "lineCap": "round", "lineJoin": "round", "opacity": 1.0, "radius": 5, "stroke": true, "weight": 3}
-            ).addTo(feature_group_3c60ab709b5b7eb3941ea70f06caad1c);
+            ).addTo(feature_group_015a21a269e9b60c195b7dadf70dd04e);
         
     
-        var popup_03fac90cc00bd79b8a1da8396bf388b8 = L.popup({
+        var popup_fe8e31dce489a7469f3080edec969ea3 = L.popup({
   "maxWidth": 300,
 });
 
         
             
-                var html_5e0a39a548b55118bcb9257e8ba5fb90 = $(`<div id="html_5e0a39a548b55118bcb9257e8ba5fb90" style="width: 100.0%; height: 100.0%;"><b>NCDR: KMA發佈時間:10/20 20</b><br><b>位置：北緯 17.0°, 東經 133.1°</b></div>`)[0];
-                popup_03fac90cc00bd79b8a1da8396bf388b8.setContent(html_5e0a39a548b55118bcb9257e8ba5fb90);
+                var html_0fc0e4c93f66ad665dad10fd20211807 = $(`<div id="html_0fc0e4c93f66ad665dad10fd20211807" style="width: 100.0%; height: 100.0%;"><b>NCDR: KMA發佈時間:10/20 20</b><br><b>位置：北緯 17.0°, 東經 133.1°</b></div>`)[0];
+                popup_fe8e31dce489a7469f3080edec969ea3.setContent(html_0fc0e4c93f66ad665dad10fd20211807);
             
         
 
-        circle_marker_d9a3344dbd44a476b8ef6ea80ec7cb49.bindPopup(popup_03fac90cc00bd79b8a1da8396bf388b8)
+        circle_marker_640c9dfe8bc230fe4fba7b95afe53592.bindPopup(popup_fe8e31dce489a7469f3080edec969ea3)
         ;
 
         
     
     
-            circle_marker_d9a3344dbd44a476b8ef6ea80ec7cb49.bindTooltip(
+            circle_marker_640c9dfe8bc230fe4fba7b95afe53592.bindTooltip(
                 `<div>
                      NCDR: KMA發佈時間:10/20 20 (北緯 17.0°, 東經 133.1°)
                  </div>`,
@@ -1303,30 +1301,30 @@ function switchTab(tabId) {
             );
         
     
-            var circle_marker_febe7dd956405f31f1a95a568ee6775e = L.circleMarker(
+            var circle_marker_a6f40f229368574ad72ff14f2d80f9f1 = L.circleMarker(
                 [19.5, 128.300003051758],
                 {"bubblingMouseEvents": true, "color": "cadetblue", "dashArray": null, "dashOffset": null, "fill": true, "fillColor": "cadetblue", "fillOpacity": 1.0, "fillRule": "evenodd", "lineCap": "round", "lineJoin": "round", "opacity": 1.0, "radius": 5, "stroke": true, "weight": 3}
-            ).addTo(feature_group_3c60ab709b5b7eb3941ea70f06caad1c);
+            ).addTo(feature_group_015a21a269e9b60c195b7dadf70dd04e);
         
     
-        var popup_86ca73ad6e1a308a816de8cde4e84ced = L.popup({
+        var popup_455c83cd38c69efbd217bfbcbdd7d5b9 = L.popup({
   "maxWidth": 300,
 });
 
         
             
-                var html_0836422c0224c21d93c560bbab41ab15 = $(`<div id="html_0836422c0224c21d93c560bbab41ab15" style="width: 100.0%; height: 100.0%;"><b>NCDR: 颱風路徑</b><br><b>位置：北緯 19.5°, 東經 128.3°</b></div>`)[0];
-                popup_86ca73ad6e1a308a816de8cde4e84ced.setContent(html_0836422c0224c21d93c560bbab41ab15);
+                var html_ea56e02010eca324187018630ff22666 = $(`<div id="html_ea56e02010eca324187018630ff22666" style="width: 100.0%; height: 100.0%;"><b>NCDR: 颱風路徑</b><br><b>位置：北緯 19.5°, 東經 128.3°</b></div>`)[0];
+                popup_455c83cd38c69efbd217bfbcbdd7d5b9.setContent(html_ea56e02010eca324187018630ff22666);
             
         
 
-        circle_marker_febe7dd956405f31f1a95a568ee6775e.bindPopup(popup_86ca73ad6e1a308a816de8cde4e84ced)
+        circle_marker_a6f40f229368574ad72ff14f2d80f9f1.bindPopup(popup_455c83cd38c69efbd217bfbcbdd7d5b9)
         ;
 
         
     
     
-            circle_marker_febe7dd956405f31f1a95a568ee6775e.bindTooltip(
+            circle_marker_a6f40f229368574ad72ff14f2d80f9f1.bindTooltip(
                 `<div>
                      NCDR: 颱風路徑 (北緯 19.5°, 東經 128.3°)
                  </div>`,
@@ -1336,30 +1334,30 @@ function switchTab(tabId) {
             );
         
     
-            var circle_marker_2b59349bff1d5866745f38ea0f1f1982 = L.circleMarker(
+            var circle_marker_560af167557f1de067254f752db3fe9f = L.circleMarker(
                 [21.2999992370605, 125.400001525879],
                 {"bubblingMouseEvents": true, "color": "cadetblue", "dashArray": null, "dashOffset": null, "fill": true, "fillColor": "cadetblue", "fillOpacity": 1.0, "fillRule": "evenodd", "lineCap": "round", "lineJoin": "round", "opacity": 1.0, "radius": 5, "stroke": true, "weight": 3}
-            ).addTo(feature_group_3c60ab709b5b7eb3941ea70f06caad1c);
+            ).addTo(feature_group_015a21a269e9b60c195b7dadf70dd04e);
         
     
-        var popup_79720c00376d1443d275d75b7b32d227 = L.popup({
+        var popup_fd88fda4ec329dfa81260b39f4b811e2 = L.popup({
   "maxWidth": 300,
 });
 
         
             
-                var html_c5ee15b45f91c267b2c8dd037b8eff87 = $(`<div id="html_c5ee15b45f91c267b2c8dd037b8eff87" style="width: 100.0%; height: 100.0%;"><b>NCDR: 颱風路徑</b><br><b>位置：北緯 21.3°, 東經 125.4°</b></div>`)[0];
-                popup_79720c00376d1443d275d75b7b32d227.setContent(html_c5ee15b45f91c267b2c8dd037b8eff87);
+                var html_b0bfcec4cbeb8ee23ef1399540ec6814 = $(`<div id="html_b0bfcec4cbeb8ee23ef1399540ec6814" style="width: 100.0%; height: 100.0%;"><b>NCDR: 颱風路徑</b><br><b>位置：北緯 21.3°, 東經 125.4°</b></div>`)[0];
+                popup_fd88fda4ec329dfa81260b39f4b811e2.setContent(html_b0bfcec4cbeb8ee23ef1399540ec6814);
             
         
 
-        circle_marker_2b59349bff1d5866745f38ea0f1f1982.bindPopup(popup_79720c00376d1443d275d75b7b32d227)
+        circle_marker_560af167557f1de067254f752db3fe9f.bindPopup(popup_fd88fda4ec329dfa81260b39f4b811e2)
         ;
 
         
     
     
-            circle_marker_2b59349bff1d5866745f38ea0f1f1982.bindTooltip(
+            circle_marker_560af167557f1de067254f752db3fe9f.bindTooltip(
                 `<div>
                      NCDR: 颱風路徑 (北緯 21.3°, 東經 125.4°)
                  </div>`,
@@ -1369,30 +1367,30 @@ function switchTab(tabId) {
             );
         
     
-            var circle_marker_4fdb64f00501ebf1b56d9d244f1c1dbe = L.circleMarker(
+            var circle_marker_87d061e538252aa3ed95b79f4ddb88f9 = L.circleMarker(
                 [23.8999996185303, 122.900001525879],
                 {"bubblingMouseEvents": true, "color": "cadetblue", "dashArray": null, "dashOffset": null, "fill": true, "fillColor": "cadetblue", "fillOpacity": 1.0, "fillRule": "evenodd", "lineCap": "round", "lineJoin": "round", "opacity": 1.0, "radius": 5, "stroke": true, "weight": 3}
-            ).addTo(feature_group_3c60ab709b5b7eb3941ea70f06caad1c);
+            ).addTo(feature_group_015a21a269e9b60c195b7dadf70dd04e);
         
     
-        var popup_adf00514167ed7b5595a6c188dc58cbe = L.popup({
+        var popup_be98495e0bbaf6da5f46a86ffbeb9c51 = L.popup({
   "maxWidth": 300,
 });
 
         
             
-                var html_ad584359774faf28eb1d787cf7be79a0 = $(`<div id="html_ad584359774faf28eb1d787cf7be79a0" style="width: 100.0%; height: 100.0%;"><b>NCDR: 颱風路徑</b><br><b>位置：北緯 23.9°, 東經 122.9°</b></div>`)[0];
-                popup_adf00514167ed7b5595a6c188dc58cbe.setContent(html_ad584359774faf28eb1d787cf7be79a0);
+                var html_677dbfdb2f0cd7d79684b4143e156759 = $(`<div id="html_677dbfdb2f0cd7d79684b4143e156759" style="width: 100.0%; height: 100.0%;"><b>NCDR: 颱風路徑</b><br><b>位置：北緯 23.9°, 東經 122.9°</b></div>`)[0];
+                popup_be98495e0bbaf6da5f46a86ffbeb9c51.setContent(html_677dbfdb2f0cd7d79684b4143e156759);
             
         
 
-        circle_marker_4fdb64f00501ebf1b56d9d244f1c1dbe.bindPopup(popup_adf00514167ed7b5595a6c188dc58cbe)
+        circle_marker_87d061e538252aa3ed95b79f4ddb88f9.bindPopup(popup_be98495e0bbaf6da5f46a86ffbeb9c51)
         ;
 
         
     
     
-            circle_marker_4fdb64f00501ebf1b56d9d244f1c1dbe.bindTooltip(
+            circle_marker_87d061e538252aa3ed95b79f4ddb88f9.bindTooltip(
                 `<div>
                      NCDR: 颱風路徑 (北緯 23.9°, 東經 122.9°)
                  </div>`,
@@ -1402,30 +1400,30 @@ function switchTab(tabId) {
             );
         
     
-            var circle_marker_b3ce456a790f9559028d1a6f193156c9 = L.circleMarker(
+            var circle_marker_249e12a18e76d85e46e99921d52d7aa8 = L.circleMarker(
                 [27.2000007629395, 122.400001525879],
                 {"bubblingMouseEvents": true, "color": "cadetblue", "dashArray": null, "dashOffset": null, "fill": true, "fillColor": "cadetblue", "fillOpacity": 1.0, "fillRule": "evenodd", "lineCap": "round", "lineJoin": "round", "opacity": 1.0, "radius": 5, "stroke": true, "weight": 3}
-            ).addTo(feature_group_3c60ab709b5b7eb3941ea70f06caad1c);
+            ).addTo(feature_group_015a21a269e9b60c195b7dadf70dd04e);
         
     
-        var popup_1fb567dc919d0b96d4c3cf36f1c1e22e = L.popup({
+        var popup_fc4630cd50461e277ecf6c58d1de94b2 = L.popup({
   "maxWidth": 300,
 });
 
         
             
-                var html_f858fafe1c74c7c3c778a69b58269b05 = $(`<div id="html_f858fafe1c74c7c3c778a69b58269b05" style="width: 100.0%; height: 100.0%;"><b>NCDR: 颱風路徑</b><br><b>位置：北緯 27.2°, 東經 122.4°</b></div>`)[0];
-                popup_1fb567dc919d0b96d4c3cf36f1c1e22e.setContent(html_f858fafe1c74c7c3c778a69b58269b05);
+                var html_83e0360a0acd2e41798d39b64412169b = $(`<div id="html_83e0360a0acd2e41798d39b64412169b" style="width: 100.0%; height: 100.0%;"><b>NCDR: 颱風路徑</b><br><b>位置：北緯 27.2°, 東經 122.4°</b></div>`)[0];
+                popup_fc4630cd50461e277ecf6c58d1de94b2.setContent(html_83e0360a0acd2e41798d39b64412169b);
             
         
 
-        circle_marker_b3ce456a790f9559028d1a6f193156c9.bindPopup(popup_1fb567dc919d0b96d4c3cf36f1c1e22e)
+        circle_marker_249e12a18e76d85e46e99921d52d7aa8.bindPopup(popup_fc4630cd50461e277ecf6c58d1de94b2)
         ;
 
         
     
     
-            circle_marker_b3ce456a790f9559028d1a6f193156c9.bindTooltip(
+            circle_marker_249e12a18e76d85e46e99921d52d7aa8.bindTooltip(
                 `<div>
                      NCDR: 颱風路徑 (北緯 27.2°, 東經 122.4°)
                  </div>`,
@@ -1435,30 +1433,30 @@ function switchTab(tabId) {
             );
         
     
-            var circle_marker_94ce642bf635375ce35399ffc24ac00a = L.circleMarker(
+            var circle_marker_dcd5ae812ef189266ff1c2b1ae3d1cce = L.circleMarker(
                 [29.6000003814697, 124.300003051758],
                 {"bubblingMouseEvents": true, "color": "cadetblue", "dashArray": null, "dashOffset": null, "fill": true, "fillColor": "cadetblue", "fillOpacity": 1.0, "fillRule": "evenodd", "lineCap": "round", "lineJoin": "round", "opacity": 1.0, "radius": 5, "stroke": true, "weight": 3}
-            ).addTo(feature_group_3c60ab709b5b7eb3941ea70f06caad1c);
+            ).addTo(feature_group_015a21a269e9b60c195b7dadf70dd04e);
         
     
-        var popup_bef832c88030d663ee5f690464198d07 = L.popup({
+        var popup_71f96bfb6e3b84358c3150816476ce7e = L.popup({
   "maxWidth": 300,
 });
 
         
             
-                var html_2d6133c6f9c1f424161a01fee4e96a8a = $(`<div id="html_2d6133c6f9c1f424161a01fee4e96a8a" style="width: 100.0%; height: 100.0%;"><b>NCDR: 颱風路徑</b><br><b>位置：北緯 29.6°, 東經 124.3°</b></div>`)[0];
-                popup_bef832c88030d663ee5f690464198d07.setContent(html_2d6133c6f9c1f424161a01fee4e96a8a);
+                var html_c961ccdd66bc6818e3749d8e2f3e5eb7 = $(`<div id="html_c961ccdd66bc6818e3749d8e2f3e5eb7" style="width: 100.0%; height: 100.0%;"><b>NCDR: 颱風路徑</b><br><b>位置：北緯 29.6°, 東經 124.3°</b></div>`)[0];
+                popup_71f96bfb6e3b84358c3150816476ce7e.setContent(html_c961ccdd66bc6818e3749d8e2f3e5eb7);
             
         
 
-        circle_marker_94ce642bf635375ce35399ffc24ac00a.bindPopup(popup_bef832c88030d663ee5f690464198d07)
+        circle_marker_dcd5ae812ef189266ff1c2b1ae3d1cce.bindPopup(popup_71f96bfb6e3b84358c3150816476ce7e)
         ;
 
         
     
     
-            circle_marker_94ce642bf635375ce35399ffc24ac00a.bindTooltip(
+            circle_marker_dcd5ae812ef189266ff1c2b1ae3d1cce.bindTooltip(
                 `<div>
                      NCDR: 颱風路徑 (北緯 29.6°, 東經 124.3°)
                  </div>`,
@@ -1468,13 +1466,13 @@ function switchTab(tabId) {
             );
         
     
-            var poly_line_5071a17a403b84295f0de853d4562388 = L.polyline(
+            var poly_line_58b55003eeb8bcdc58cbd1817d072571 = L.polyline(
                 [[17.0, 133.1], [19.5, 128.3], [21.3, 125.4], [23.9, 122.9], [27.2, 122.4], [29.6, 124.3]],
                 {"bubblingMouseEvents": true, "color": "purple", "dashArray": null, "dashOffset": null, "fill": false, "fillColor": "purple", "fillOpacity": 0.2, "fillRule": "evenodd", "lineCap": "round", "lineJoin": "round", "noClip": false, "opacity": 1.0, "smoothFactor": 1.0, "stroke": true, "weight": 4}
-            ).addTo(feature_group_3c60ab709b5b7eb3941ea70f06caad1c);
+            ).addTo(feature_group_015a21a269e9b60c195b7dadf70dd04e);
         
     
-            poly_line_5071a17a403b84295f0de853d4562388.bindTooltip(
+            poly_line_58b55003eeb8bcdc58cbd1817d072571.bindTooltip(
                 `<div>
                      <b>NCDR: KMA</b>
                  </div>`,
@@ -1484,28 +1482,28 @@ function switchTab(tabId) {
             );
         
     
-            feature_group_3c60ab709b5b7eb3941ea70f06caad1c.addTo(map_dae66025aa548b4fde7cde9105ea3a39);
+            feature_group_015a21a269e9b60c195b7dadf70dd04e.addTo(map_44677b5c3376f119adb396a97b4b1125);
         
     
-            var layer_control_1a8947a7ebc6ec3e26732c4676ca9a20_layers = {
+            var layer_control_09a644dbd6a5d9aa608ada85ffe6bc31_layers = {
                 base_layers : {
-                    "https://server.arcgisonline.com/arcgis/rest/services/world_street_map/mapserver/tile/{z}/{y}/{x}" : tile_layer_9ff459166cb87e16fdc6db33b3db2c48,
+                    "https://server.arcgisonline.com/arcgis/rest/services/world_street_map/mapserver/tile/{z}/{y}/{x}" : tile_layer_88719cf3f982424a13a38c8c8040a139,
                 },
                 overlays :  {
-                    "3. CWA \u66b4\u98a8\u5708\u4fb5\u8972\u6a5f\u7387 (W-C0034-003)" : feature_group_0c7f5f472e465908f462e3785617e005,
-                    "2. CWA \u8b66\u5831\u8207\u66b4\u98a8\u5708 (W-C0034-002)" : feature_group_bd8d78797b807d627bc5232854c40b53,
-                    "1. \u5404\u570b\u9810\u6e2c\u8def\u5f91 (NCDR)" : feature_group_3c60ab709b5b7eb3941ea70f06caad1c,
+                    "3. CWA \u66b4\u98a8\u5708\u4fb5\u8972\u6a5f\u7387 (W-C0034-003)" : feature_group_6d673138001815dd0c4621aad17dfc84,
+                    "2. CWA \u8b66\u5831\u8207\u66b4\u98a8\u5708 (W-C0034-002)" : feature_group_767d0eb13a3868726bf5c6be829b9891,
+                    "1. \u5404\u570b\u9810\u6e2c\u8def\u5f91 (NCDR)" : feature_group_015a21a269e9b60c195b7dadf70dd04e,
                 },
             };
-            let layer_control_1a8947a7ebc6ec3e26732c4676ca9a20 = L.control.layers(
-                layer_control_1a8947a7ebc6ec3e26732c4676ca9a20_layers.base_layers,
-                layer_control_1a8947a7ebc6ec3e26732c4676ca9a20_layers.overlays,
+            let layer_control_09a644dbd6a5d9aa608ada85ffe6bc31 = L.control.layers(
+                layer_control_09a644dbd6a5d9aa608ada85ffe6bc31_layers.base_layers,
+                layer_control_09a644dbd6a5d9aa608ada85ffe6bc31_layers.overlays,
                 {
   "position": "topright",
   "collapsed": false,
   "autoZIndex": true,
 }
-            ).addTo(map_dae66025aa548b4fde7cde9105ea3a39);
+            ).addTo(map_44677b5c3376f119adb396a97b4b1125);
 
         
 </script>
