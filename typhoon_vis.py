@@ -261,85 +261,58 @@ if not alert_html:
 
 # --- 介面面板 ---
 tab_panel_html = f"""
-<div style="position: fixed; bottom: 30px; right: 30px; width: 440px; height: 500px; 
-     background-color: white; border:2px solid #337ab7; z-index:9999; font-size:13px;
+<div style="position: fixed; bottom: 30px; right: 30px; width: 440px; height: 500px;
+     background-color: white; border: 2px solid #337ab7; z-index: 9999; font-size: 13px;
      padding: 10px; border-radius: 8px; box-shadow: 0 0 10px rgba(0,0,0,0.3); opacity: 0.96;
-     display: flex; flex-direction: column;">
-    
-    <div style="display: flex; justify-content: space-between; align-items: baseline; margin-bottom:6px;">
-        <b style="font-size:15px; color:#333;">颱風即時動態與各國預測整合</b>
+     display: flex; flex-direction: column; box-sizing: border-box;">
+
+    <div style="display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 6px;">
+        <b style="font-size: 15px; color: #333;">颱風即時動態與各國預測整合</b>
     </div>
-    <div style="font-size:11px; color:#666; margin-bottom:8px; border-bottom:1px solid #ccc; padding-bottom:5px;">
+    <div style="font-size: 11px; color: #666; margin-bottom: 8px; border-bottom: 1px solid #ccc; padding-bottom: 5px;">
         <i class="fa fa-clock"></i> 系統資料更新時間：<b>{current_time_str}</b>
     </div>
-    
-    <div style="display: flex; border-bottom: 2px solid #337ab7; margin-bottom: 8px; font-size:12px; flex-wrap: wrap; gap: 4px; padding-bottom: 4px;">
-        <button onclick="switchTab('tab-alert')" id="btn-alert" style="flex:1 1 auto; padding:6px; border:none; background:#337ab7; color:white; font-weight:bold; cursor:pointer; border-radius:4px;">CWA 動態</button>
-        <button onclick="switchTab('tab-cwa-web')" id="btn-cwa-web" style="flex:1 1 auto; padding:6px; border:none; background:#eee; color:#333; font-weight:bold; cursor:pointer; border-radius:4px;">CWA 官網</button>
-        <button onclick="switchTab('tab-jma')" id="btn-jma" style="flex:1 1 auto; padding:6px; border:none; background:#eee; color:#333; font-weight:bold; cursor:pointer; border-radius:4px;">日本(JMA)</button>
-        <button onclick="switchTab('tab-wind')" id="btn-wind" style="flex:1 1 auto; padding:6px; border:none; background:#eee; color:#333; font-weight:bold; cursor:pointer; border-radius:4px;">風力預測</button>
-        <button onclick="switchTab('tab-rain')" id="btn-rain" style="flex:1 1 auto; padding:6px; border:none; background:#eee; color:#333; font-weight:bold; cursor:pointer; border-radius:4px;">雨量預測</button>
+
+    <div style="display: flex; border-bottom: 2px solid #337ab7; margin-bottom: 8px; font-size: 12px; flex-wrap: wrap; gap: 4px; padding-bottom: 4px;">
+        <button onclick="switchTab('tab-alert')" id="btn-alert"
+                style="flex: 1 1 auto; padding: 6px; border: none; background: #337ab7; color: white; border-radius: 4px; cursor: pointer;">
+            臺灣氣象署警報
+        </button>
+        <button onclick="switchTab('tab-jma')" id="btn-jma"
+                style="flex: 1 1 auto; padding: 6px; border: none; background: #eee; color: #333; border-radius: 4px; cursor: pointer;">
+            日本氣象廳 JMA
+        </button>
     </div>
 
-    <div id="tab-alert" class="tab-content" style="overflow-y:auto; flex:1;">{alert_html}</div>
-    
-    <div id="tab-cwa-web" class="tab-content" style="display:none; overflow-y:auto; flex:1; position: relative;">
-        <div style="margin-bottom: 5px; text-align: right;">
-            <a href="https://www.cwa.gov.tw/V8/C/P/Typhoon/TY_NEWS.html" target="_blank" style="font-size:12px; color:#337ab7; text-decoration:underline;">&#8599; 另開新視窗檢視</a>
-        </div>
-        <iframe src="https://www.cwa.gov.tw/V8/C/P/Typhoon/TY_NEWS.html" width="100%" height="90%" style="border:1px solid #ccc; border-radius: 4px;"></iframe>
+    <div id="tab-alert" style="display: block; flex: 1; min-height: 0; overflow-y: auto; line-height: 1.6;">
+        {alert_html}
     </div>
-
-    <div id="tab-jma" class="tab-content" style="display:none; overflow-y:auto; flex:1;">{jma_html}</div>
-    <div id="tab-wind" class="tab-content" style="display:none; overflow-y:auto; flex:1;"><p style='color:gray;'>無最新風力警報資料</p></div>
-    <div id="tab-rain" class="tab-content" style="display:none; overflow-y:auto; flex:1;"><p style='color:gray;'>無最新雨量警報資料</p></div>
+    <div id="tab-jma" style="display: none; flex: 1; min-height: 0; overflow-y: auto; line-height: 1.6;">
+        {jma_html}
+    </div>
 </div>
 
 <script>
 function switchTab(tabId) {{
-    document.querySelectorAll('.tab-content').forEach(el => el.style.display = 'none');
-    document.getElementById(tabId).style.display = 'block';
-    
-    ['alert', 'cwa-web', 'jma', 'wind', 'rain'].forEach(id => {{
-        let btn = document.getElementById('btn-' + id);
-        if('tab-' + id === tabId) {{
-            btn.style.background = '#337ab7';
-            btn.style.color = 'white';
-        }} else {{
-            btn.style.background = '#eee';
-            btn.style.color = '#333';
+    const tabIds = ['tab-alert', 'tab-jma'];
+    tabIds.forEach(function(id) {{
+        const panel = document.getElementById(id);
+        const button = document.getElementById(id === 'tab-alert' ? 'btn-alert' : 'btn-jma');
+        const active = id === tabId;
+        if (panel) panel.style.display = active ? 'block' : 'none';
+        if (button) {{
+            button.style.background = active ? '#337ab7' : '#eee';
+            button.style.color = active ? 'white' : '#333';
         }}
     }});
 }}
 </script>
 """
+
+# 將資訊面板加入 Folium 地圖，並顯示圖層切換控制。
 m.get_root().html.add_child(folium.Element(tab_panel_html))
+folium.LayerControl(collapsed=False).add_to(m)
 
-# 圖例
-legend_html = """
-<div style="position: fixed; bottom: 30px; left: 30px; width: 180px; 
-     background-color: white; border:2px solid gray; z-index:9999; font-size:12px;
-     padding: 10px; border-radius: 6px; opacity: 0.95;">
-  <b>各國與 CWA 圖例</b><br>
-  <i class="fa fa-minus" style="color:red"></i> 台灣 (CWA/NCDR)<br>
-  <i class="fa fa-minus" style="color:blue"></i> 日本 (JMA)<br>
-  <i class="fa fa-minus" style="color:green"></i> 美國 (JTWC)<br>
-  <i class="fa fa-minus" style="color:purple"></i> 韓國 (KMA)<br>
-  <i class="fa fa-minus" style="color:orange"></i> 中國 (CMA)<br>
-  <span style="color:#d9534f; font-weight:bold;">- - -</span> 颱風歷史移動軌跡<br>
-  <i class="fa fa-square" style="color:#d9534f; opacity:0.6;"></i> CWA 暴風圈/潛勢區<br>
-  <i class="fa fa-square" style="color:purple; opacity:0.5;"></i> CWA 侵襲機率區
-</div>
-"""
-m.get_root().html.add_child(folium.Element(legend_html))
-
-# 圖層疊加順序
-fg_cwa_wsp.add_to(m)
-fg_cwa_route.add_to(m)
-fg_ncdr.add_to(m)
-
-folium.LayerControl(position="topright", collapsed=False).add_to(m)
-
-output_file = "index.html"
+output_file = "typhoon_vis.html"
 m.save(output_file)
-print(f"地圖已成功更新，已加入 CWA 內嵌網頁：{output_file}")
+print(f"地圖已輸出：{output_file}")

@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<html>
+<head>
+    
+    <meta http-equiv="content-type" content="text/html; charset=UTF-8" />
+    <script src="https://cdn.jsdelivr.net/npm/leaflet@1.9.3/dist/leaflet.js"></script>
+    <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.2.2/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Leaflet.awesome-markers/2.0.2/leaflet.awesome-markers.js"></script>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/leaflet@1.9.3/dist/leaflet.css"/>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.2.2/dist/css/bootstrap.min.css"/>
+    <link rel="stylesheet" href="https://netdna.bootstrapcdn.com/bootstrap/3.0.0/css/bootstrap-glyphicons.css"/>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.2.0/css/all.min.css"/>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/Leaflet.awesome-markers/2.0.2/leaflet.awesome-markers.css"/>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/python-visualization/folium/folium/templates/leaflet.awesome.rotate.min.css"/>
+    
+            <meta name="viewport" content="width=device-width,
+                initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+            <style>
+                #map_d7f828cbb4ef4a31a623cf4e28bc9734 {
+                    position: relative;
+                    width: 100.0%;
+                    height: 100.0%;
+                    left: 0.0%;
+                    top: 0.0%;
+                }
+                .leaflet-container { font-size: 1rem; }
+            </style>
+
+            <style>html, body {
+                width: 100%;
+                height: 100%;
+                margin: 0;
+                padding: 0;
+            }
+            </style>
+
+            <style>#map {
+                position:absolute;
+                top:0;
+                bottom:0;
+                right:0;
+                left:0;
+                }
+            </style>
+
+            <script>
+                L_NO_TOUCH = false;
+                L_DISABLE_3D = false;
+            </script>
+
+        
+</head>
+<body>
+    
+    
+<div style="position: fixed; bottom: 30px; right: 30px; width: 440px; height: 500px;
+     background-color: white; border: 2px solid #337ab7; z-index: 9999; font-size: 13px;
+     padding: 10px; border-radius: 8px; box-shadow: 0 0 10px rgba(0,0,0,0.3); opacity: 0.96;
+     display: flex; flex-direction: column; box-sizing: border-box;">
+
+    <div style="display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 6px;">
+        <b style="font-size: 15px; color: #333;">颱風即時動態與各國預測整合</b>
+    </div>
+    <div style="font-size: 11px; color: #666; margin-bottom: 8px; border-bottom: 1px solid #ccc; padding-bottom: 5px;">
+        <i class="fa fa-clock"></i> 系統資料更新時間：<b>2026-10-20 23:25:12</b>
+    </div>
+
+    <div style="display: flex; border-bottom: 2px solid #337ab7; margin-bottom: 8px; font-size: 12px; flex-wrap: wrap; gap: 4px; padding-bottom: 4px;">
+        <button onclick="switchTab('tab-alert')" id="btn-alert"
+                style="flex: 1 1 auto; padding: 6px; border: none; background: #337ab7; color: white; border-radius: 4px; cursor: pointer;">
+            臺灣氣象署警報
+        </button>
+        <button onclick="switchTab('tab-jma')" id="btn-jma"
+                style="flex: 1 1 auto; padding: 6px; border: none; background: #eee; color: #333; border-radius: 4px; cursor: pointer;">
+            日本氣象廳 JMA
+        </button>
+    </div>
+
+    <div id="tab-alert" style="display: block; flex: 1; min-height: 0; overflow-y: auto; line-height: 1.6;">
+        
+    <h4 style="margin:0 0 5px 0; color:#0275d8;">即時颱風消息</h4>
+    <p style="color:gray;">目前臺灣尚未發布颱風警報。請參考地圖上之各國預測路徑及切換 JMA 分頁查看日本最新動態。</p>
+    
+    </div>
+    <div id="tab-jma" style="display: none; flex: 1; min-height: 0; overflow-y: auto; line-height: 1.6;">
+        <p style='color:green; padding: 10px; font-weight:bold;'>✅ 目前西太平洋無活躍颱風，日本氣象廳 (JMA) 暫無發布警報。</p>
+    </div>
+</div>
+
+<script>
+function switchTab(tabId) {
+    const tabIds = ['tab-alert', 'tab-jma'];
+    tabIds.forEach(function(id) {
+        const panel = document.getElementById(id);
+        const button = document.getElementById(id === 'tab-alert' ? 'btn-alert' : 'btn-jma');
+        const active = id === tabId;
+        if (panel) panel.style.display = active ? 'block' : 'none';
+        if (button) {
+            button.style.background = active ? '#337ab7' : '#eee';
+            button.style.color = active ? 'white' : '#333';
+        }
+    });
+}
+</script>
+    
+            <div class="folium-map" id="map_d7f828cbb4ef4a31a623cf4e28bc9734" ></div>
+        
+</body>
+<script>
+    
+    
+            var map_d7f828cbb4ef4a31a623cf4e28bc9734 = L.map(
+                "map_d7f828cbb4ef4a31a623cf4e28bc9734",
+                {
+                    center: [23.8, 121.0],
+                    crs: L.CRS.EPSG3857,
+                    ...{
+  "zoom": 6,
+  "zoomControl": true,
+  "preferCanvas": false,
+}
+
+                }
+            );
+
+            
+
+        
+    
+            var tile_layer_2557db95cc9820702b397ef6289a9c46 = L.tileLayer(
+                "https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}",
+                {
+  "minZoom": 0,
+  "maxZoom": 18,
+  "maxNativeZoom": 18,
+  "noWrap": false,
+  "attribution": "Esri World Street Map",
+  "subdomains": "abc",
+  "detectRetina": false,
+  "tms": false,
+  "opacity": 1,
+}
+
+            );
+        
+    
+            tile_layer_2557db95cc9820702b397ef6289a9c46.addTo(map_d7f828cbb4ef4a31a623cf4e28bc9734);
+        
+    
+            var layer_control_904301deec315a69f1dce0b282595b9e_layers = {
+                base_layers : {
+                    "https://server.arcgisonline.com/arcgis/rest/services/world_street_map/mapserver/tile/{z}/{y}/{x}" : tile_layer_2557db95cc9820702b397ef6289a9c46,
+                },
+                overlays :  {
+                },
+            };
+            let layer_control_904301deec315a69f1dce0b282595b9e = L.control.layers(
+                layer_control_904301deec315a69f1dce0b282595b9e_layers.base_layers,
+                layer_control_904301deec315a69f1dce0b282595b9e_layers.overlays,
+                {
+  "position": "topright",
+  "collapsed": false,
+  "autoZIndex": true,
+}
+            ).addTo(map_d7f828cbb4ef4a31a623cf4e28bc9734);
+
+        
+</script>
+</html>
