@@ -1,2172 +1,435 @@
-<!DOCTYPE html>
-<html>
-<head>
-    
-    <meta http-equiv="content-type" content="text/html; charset=UTF-8" />
-    <script src="https://cdn.jsdelivr.net/npm/leaflet@1.9.3/dist/leaflet.js"></script>
-    <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.2.2/dist/js/bootstrap.bundle.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/Leaflet.awesome-markers/2.0.2/leaflet.awesome-markers.js"></script>
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/leaflet@1.9.3/dist/leaflet.css"/>
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.2.2/dist/css/bootstrap.min.css"/>
-    <link rel="stylesheet" href="https://netdna.bootstrapcdn.com/bootstrap/3.0.0/css/bootstrap-glyphicons.css"/>
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.2.0/css/all.min.css"/>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/Leaflet.awesome-markers/2.0.2/leaflet.awesome-markers.css"/>
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/python-visualization/folium/folium/templates/leaflet.awesome.rotate.min.css"/>
-    
-            <meta name="viewport" content="width=device-width,
-                initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
-            <style>
-                #map_218e4b5e0c6f850f457d20905e182aed {
-                    position: relative;
-                    width: 100.0%;
-                    height: 100.0%;
-                    left: 0.0%;
-                    top: 0.0%;
-                }
-                .leaflet-container { font-size: 1rem; }
-            </style>
+import io
+import json
+import xml.etree.ElementTree as ET
+import zipfile
+import folium
+import requests
 
-            <style>html, body {
-                width: 100%;
-                height: 100%;
-                margin: 0;
-                padding: 0;
-            }
-            </style>
+# 中央氣象署 (CWA) API 授權碼
+CWA_API_KEY = "CWA-77A723AE-21B7-4AD9-A9DE-661D15AE3823"
 
-            <style>#map {
-                position:absolute;
-                top:0;
-                bottom:0;
-                right:0;
-                left:0;
-                }
-            </style>
+# 1. 初始化 Folium 互動地圖
+m = folium.Map(
+    location=[23.8, 121.0],
+    zoom_start=6,
+    tiles="https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}",
+    attr="Esri World Street Map",
+)
 
-            <script>
-                L_NO_TOUCH = false;
-                L_DISABLE_3D = false;
-            </script>
+# [新增] 注入全局 CSS 美化樣式 (字體、毛玻璃面板、滾動條、Tab動畫)
+custom_css = """
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700&display=swap');
 
-        
-</head>
-<body>
+body, .leaflet-container { 
+    font-family: 'Noto Sans TC', sans-serif !important; 
+}
+
+/* 毛玻璃質感面板 */
+.glass-panel {
+    background: rgba(255, 255, 255, 0.85);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border: 1px solid rgba(255, 255, 255, 0.4);
+    box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.15);
+    border-radius: 12px;
+    opacity: 0.98;
+}
+
+/* 颱風數據卡片 */
+.typhoon-card {
+    background: linear-gradient(135deg, #fffaf0 0%, #fff3cd 100%);
+    border: 1px solid #ffeeba;
+    padding: 12px;
+    border-radius: 10px;
+    margin: 10px 0;
+    font-size: 13px;
+    color: #664d03;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+}
+
+.typhoon-data-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+    margin-top: 10px;
+}
+.data-item {
+    background: rgba(255,255,255,0.6);
+    padding: 6px 8px;
+    border-radius: 6px;
+    border: 1px solid rgba(0,0,0,0.03);
+}
+
+/* 現代化 Tab 按鈕 */
+.nav-tabs {
+    display: flex;
+    border-bottom: 2px solid #e0e0e0;
+    margin-bottom: 12px;
+}
+.nav-tabs button {
+    flex: 1;
+    background: transparent;
+    border: none;
+    padding: 10px 0;
+    font-size: 14px;
+    font-weight: 600;
+    color: #777;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    border-bottom: 3px solid transparent;
+    margin-bottom: -2px; /* 覆蓋底線 */
+}
+.nav-tabs button.active {
+    color: #0056b3;
+    border-bottom: 3px solid #0056b3;
+}
+.nav-tabs button:hover:not(.active) {
+    color: #0056b3;
+    background: rgba(0, 86, 179, 0.04);
+}
+
+/* 美化滾動條 */
+::-webkit-scrollbar { width: 6px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: rgba(0,0,0,0.15); border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: rgba(0,0,0,0.3); }
+</style>
+"""
+m.get_root().html.add_child(folium.Element(custom_css))
+
+
+# 2. 建立圖層 (FeatureGroups)
+fg_cwa_wsp = folium.FeatureGroup(name="3. CWA 暴風圈侵襲機率 (W-C0034-003)", show=True)
+fg_cwa_route = folium.FeatureGroup(name="2. CWA 警報與暴風圈 (W-C0034-002)", show=True)
+fg_ncdr = folium.FeatureGroup(name="1. 各國預測路徑 (NCDR)", show=True)
+ns = {"kml": "http://www.opengis.net/kml/2.2"}
+
+# --- 中間解析函數保持原樣 (parse_lat_lon, fetch_kml_from_kmz, parse_and_add_cwa_002 等) ---
+def parse_lat_lon(pos_str):
+    if not pos_str:
+        return None
+    cleaned = pos_str.replace("N", "").replace("E", "").replace("°", "").strip()
+    parts = [p.strip() for p in cleaned.replace(",", " ").split() if p.strip()]
+    if len(parts) >= 2:
+        try:
+            return float(parts[0]), float(parts[1])
+        except ValueError:
+            return None
+    return None
+
+def fetch_kml_from_kmz(url):
+    try:
+        res = requests.get(url, timeout=15)
+        res.raise_for_status()
+        if url.lower().endswith("kmz") or res.content[:2] == b"PK":
+            with zipfile.ZipFile(io.BytesIO(res.content)) as z:
+                kml_files = [f for f in z.namelist() if f.lower().endswith(".kml")]
+                if kml_files:
+                    return ET.fromstring(z.read(kml_files[0]))
+        else:
+            return ET.fromstring(res.content)
+    except Exception as e:
+        print(f"下載/解析 KML 失敗 ({url}): {e}")
+        return None
+
+def parse_and_add_cwa_002(root_elem, target_group):
+    if root_elem is None:
+        return
+    for pm in root_elem.findall(".//kml:Placemark", ns):
+        name_elem = pm.find("kml:name", ns)
+        name = name_elem.text.strip() if (name_elem is not None and name_elem.text) else "圖資物件"
+        desc_elem = pm.find("kml:description", ns)
+        desc = desc_elem.text.strip() if (desc_elem is not None and desc_elem.text) else ""
+
+        poly_coords = pm.find(".//kml:Polygon//kml:coordinates", ns)
+        if poly_coords is not None and poly_coords.text:
+            poly_path = [[float(c.split(",")[1]), float(c.split(",")[0])] for c in poly_coords.text.strip().split() if len(c.split(",")) >= 2]
+            if poly_path:
+                if "暴風圈" in name:
+                    folium.Polygon(locations=poly_path, color="#d9534f", weight=2, opacity=0.8, fill=True, fill_color="#d9534f", fill_opacity=0.25, tooltip=f"<b>{name}</b>", popup=folium.Popup(f"<b>{name}</b><br>{desc}", max_width=300)).add_to(target_group)
+                else:
+                    folium.Polygon(locations=poly_path, color="#d9534f", weight=1.5, opacity=0.6, fill=True, fill_color="#f0ad4e", fill_opacity=0.12, tooltip=f"<b>{name}</b>", popup=folium.Popup(f"<b>{name}</b><br>{desc}", max_width=300)).add_to(target_group)
+
+        line_coords = pm.find(".//kml:LineString/kml:coordinates", ns)
+        if line_coords is not None and line_coords.text:
+            path = [[float(c.split(",")[1]), float(c.split(",")[0])] for c in line_coords.text.strip().split() if len(c.split(",")) >= 2]
+            if path:
+                if "過去" in name or "歷史" in name:
+                    folium.PolyLine(locations=path, color="#d9534f", weight=3.5, opacity=0.9, dash_array="6, 6", tooltip="<b>🌀 颱風歷史路徑 (過去移動軌跡)</b>", popup=folium.Popup(f"<b>{name}</b><br>{desc}", max_width=300)).add_to(target_group)
+                else:
+                    folium.PolyLine(locations=path, color="#d9534f", weight=3, opacity=0.85, tooltip=f"<b>{name}</b>", popup=folium.Popup(f"<b>{name}</b><br>{desc}", max_width=300)).add_to(target_group)
+
+        point_coords = pm.find(".//kml:Point/kml:coordinates", ns)
+        if point_coords is not None and point_coords.text:
+            parts = point_coords.text.strip().split(",")
+            if len(parts) >= 2:
+                lon, lat = float(parts[0]), float(parts[1])
+                pos_str = f"中心位置：北緯 {lat:.1f}°, 東經 {lon:.1f}°"
+                folium.CircleMarker(location=[lat, lon], radius=4, color="#d9534f", fill=True, fill_color="#d9534f", fill_opacity=0.9, tooltip=f"{name} ({pos_str})", popup=folium.Popup(f"<b>{name}</b><br><b>{pos_str}</b><br>{desc}", max_width=300)).add_to(target_group)
+
+def parse_and_add_cwa_003(root_elem, target_group):
+    if root_elem is None:
+        return
+    for pm in root_elem.findall(".//kml:Placemark", ns):
+        name_elem = pm.find("kml:name", ns)
+        name = name_elem.text.strip() if (name_elem is not None and name_elem.text) else "機率範圍"
+        desc_elem = pm.find("kml:description", ns)
+        desc = desc_elem.text.strip() if (desc_elem is not None and desc_elem.text) else ""
+
+        fill_op = 0.04
+        if "100%" in name or "80%" in name: fill_op = 0.10
+        elif "60%" in name or "40%" in name: fill_op = 0.06
+        elif "20%" in name: fill_op = 0.03
+
+        poly_coords = pm.find(".//kml:Polygon//kml:coordinates", ns)
+        if poly_coords is not None and poly_coords.text:
+            poly_path = [[float(c.split(",")[1]), float(c.split(",")[0])] for c in poly_coords.text.strip().split() if len(c.split(",")) >= 2]
+            if poly_path:
+                folium.Polygon(locations=poly_path, color="purple", weight=1, opacity=0.35, fill=True, fill_color="purple", fill_opacity=fill_op, tooltip=f"<b>暴風圈侵襲機率：{name}</b>", popup=folium.Popup(f"<b>侵襲機率：{name}</b><br>{desc}", max_width=300)).add_to(target_group)
+
+def get_cwa_product_xml(api_url):
+    try:
+        res = requests.get(api_url, timeout=15)
+        res.raise_for_status()
+        product_url = None
+        try:
+            data = res.json()
+            product_url = data.get("cwaopendata", {}).get("Dataset", {}).get("Resource", {}).get("ProductURL")
+        except Exception:
+            root = ET.fromstring(res.content)
+            for elem in root.iter():
+                if elem.tag.endswith("ProductURL") and elem.text:
+                    product_url = elem.text.strip()
+                    break
+        if product_url:
+            xml_res = requests.get(product_url, timeout=15)
+            xml_res.raise_for_status()
+            return xml_res.content
+        return res.content
+    except Exception as e:
+        print(f"取得 CWA Product XML 失敗 ({api_url}): {e}")
+        return None
+
+def parse_cwa_forecast_xml(xml_content, forecast_type="風力"):
+    if not xml_content:
+        return f"<p style='color:gray; padding:10px;'>目前無發布最新{forecast_type}預測資料</p>"
+    try:
+        root = ET.fromstring(xml_content)
+        rows = []
+        for loc in root.iter():
+            if loc.tag.endswith("location") or loc.tag.endswith("Location"):
+                loc_name = ""
+                infos = []
+                for child in loc:
+                    tag_name = child.tag.split("}")[-1]
+                    txt = (child.text or "").strip()
+                    if "location" in tag_name.lower() or "name" in tag_name.lower() or "county" in tag_name.lower():
+                        loc_name = txt
+                    elif txt:
+                        infos.append(f"<span style='color:#0056b3;'>{tag_name}</span>: {txt}")
+
+                if loc_name and infos:
+                    rows.append(
+                        f"<tr><td style='padding:8px; border-bottom:1px solid #eee; font-weight:bold; white-space:nowrap; color:#333;'>{loc_name}</td>"
+                        f"<td style='padding:8px; border-bottom:1px solid #eee; color:#555;'>{' | '.join(infos)}</td></tr>"
+                    )
+
+        if rows:
+            return f"<table style='width:100%; border-collapse:collapse; font-size:13px; margin-top:10px;'>{''.join(rows)}</table>"
+        return f"<p style='color:gray; padding:10px;'>非警報發布期間，暫無最新{forecast_type}資料。</p>"
+    except Exception as e:
+        return f"<p style='color:red;'>解析{forecast_type}預測失敗: {e}</p>"
+
+# --- [圖層資料載入] ---
+print("正在讀取 NCDR 各國預測資料...")
+ncdr_url = "https://satis.ncdr.nat.gov.tw/kml/multityroute.aspx"
+ncdr_root = fetch_kml_from_kmz(ncdr_url)
+
+def get_agency_style(name):
+    if not name: return "cadetblue"
+    n = str(name).upper()
+    if "台灣" in name or "CWA" in n or "CWB" in n: return "red"
+    if "日本" in name or "JMA" in n: return "blue"
+    if "美國" in name or "JTWC" in n: return "green"
+    if "韓國" in name or "KMA" in n: return "purple"
+    if "中國" in name or "CMA" in n: return "orange"
+    return "cadetblue"
+
+if ncdr_root is not None:
+    for pm in ncdr_root.findall(".//kml:Placemark", ns):
+        name_elem = pm.find("kml:name", ns)
+        name = name_elem.text if (name_elem is not None and name_elem.text) else "颱風路徑"
+        color = get_agency_style(name)
+
+        line_coords = pm.find(".//kml:LineString/kml:coordinates", ns)
+        if line_coords is not None and line_coords.text:
+            path = [[float(c.split(",")[1]), float(c.split(",")[0])] for c in line_coords.text.strip().split() if len(c.split(",")) >= 2]
+            if path: folium.PolyLine(locations=path, color=color, weight=4, opacity=1.0, tooltip=f"<b>NCDR: {name}</b>").add_to(fg_ncdr)
+
+        point_coords = pm.find(".//kml:Point/kml:coordinates", ns)
+        if point_coords is not None and point_coords.text:
+            parts = point_coords.text.strip().split(",")
+            if len(parts) >= 2:
+                lon, lat = float(parts[0]), float(parts[1])
+                folium.CircleMarker(location=[lat, lon], radius=5, color=color, fill=True, fill_color=color, fill_opacity=1.0, tooltip=f"NCDR: {name}", popup=folium.Popup(f"<b>NCDR: {name}</b><br>位置：北緯 {lat:.1f}°, 東經 {lon:.1f}°", max_width=300)).add_to(fg_ncdr)
+
+print("正在讀取 CWA 颱風警報與暴風圈 (W-C0034-002)...")
+cwa_002_url = f"https://opendata.cwa.gov.tw/fileapi/v1/opendataapi/W-C0034-002?Authorization={CWA_API_KEY}&downloadType=WEB&format=KMZ"
+cwa_002_root = fetch_kml_from_kmz(cwa_002_url)
+parse_and_add_cwa_002(cwa_002_root, fg_cwa_route)
+
+print("正在讀取 CWA 暴風圈侵襲機率 (W-C0034-003)...")
+cwa_003_url = f"https://opendata.cwa.gov.tw/fileapi/v1/opendataapi/W-C0034-003?Authorization={CWA_API_KEY}&downloadType=WEB&format=KMZ"
+parse_and_add_cwa_003(fetch_kml_from_kmz(cwa_003_url), fg_cwa_wsp)
+
+
+# --- [分頁 1] CWA 颱風警報與結構化數據 ---
+print("正在讀取 CWA 警報與颱風中心位置 (W-C0034-001)...")
+cwa_001_url = f"https://opendata.cwa.gov.tw/api/v1/rest/datastore/W-C0034-001?Authorization={CWA_API_KEY}"
+alert_html = ""
+
+try:
+    res = requests.get(cwa_001_url, timeout=15)
+    if res.status_code == 200:
+        data = res.json()
+        info_list = data.get("records", {}).get("info", [])
+        if info_list:
+            latest = info_list[0]
+            headline = latest.get("headline", "颱風警報")
+            eff_time = latest.get("effective", "")
+
+            t_data = {}
+            for t_item in latest.get("description", {}).get("typhoon-info", []):
+                for sec in t_item.get("section", []):
+                    analysis = sec.get("analysis", {})
+                    if analysis:
+                        t_data["cwa_name"] = sec.get("cwa_typhoon_name", "")
+                        t_data["eng_name"] = sec.get("typhoon_name", "")
+                        t_data["position"] = analysis.get("position", "")
+                        t_data["pressure"] = analysis.get("pressure", {}).get("value", "")
+                        t_data["max_winds"] = analysis.get("max_winds", {}).get("value", "")
+                        t_data["gust"] = analysis.get("gust", {}).get("value", "")
+                        t_data["r15"] = analysis.get("radius_of_15mps", {}).get("value", "")
+                        if analysis.get("scale", []):
+                            t_data["scale"] = analysis.get("scale", [])[0].get("value", "")
+
+            pos_raw = t_data.get("position", "")
+            center_lat_lon = parse_lat_lon(pos_raw)
+            pos_formatted = "未知"
+            if center_lat_lon:
+                pos_formatted = f"北緯 {center_lat_lon[0]:.1f}°，東經 {center_lat_lon[1]:.1f}°"
+
+            typhoon_card_html = ""
+            if pos_raw:
+                # [升級] 使用 CSS Grid 製作美觀的資料儀表板
+                typhoon_card_html = f"""
+                <div class="typhoon-card">
+                    <div style="font-size: 15px; font-weight: bold; border-bottom: 1px solid rgba(0,0,0,0.08); padding-bottom: 6px; margin-bottom: 8px;">
+                        {t_data.get('cwa_name')} ({t_data.get('eng_name')})
+                    </div>
+                    <div style="color:#d9534f; font-weight: bold; margin-bottom: 4px;">
+                        <i class="fa-solid fa-location-dot"></i> 最新位置：{pos_formatted}
+                    </div>
+                    <div class="typhoon-data-grid">
+                        <div class="data-item"><b>強度</b>：<br>{t_data.get('scale')}</div>
+                        <div class="data-item"><b>氣壓</b>：<br>{t_data.get('pressure')} hPa</div>
+                        <div class="data-item"><b>最大風速</b>：<br>{t_data.get('max_winds')} m/s</div>
+                        <div class="data-item"><b>瞬間陣風</b>：<br>{t_data.get('gust')} m/s</div>
+                        <div class="data-item" style="grid-column: span 2;"><b>7級風暴風半徑</b>：{t_data.get('r15')} km</div>
+                    </div>
+                </div>
+                """
+
+            areas = [a.get("areaDesc", "") for a in latest.get("area", [])]
+            area_str = "、".join(areas[:8]) + ("..." if len(areas) > 8 else "")
+            desc_text = "".join([f"<b style='color:#333;'>[{sec.get('title')}]</b> <span style='color:#555;'>{sec.get('value')}</span><br><br>" for sec in latest.get("description", {}).get("section", [])])
+
+            alert_html = f"""
+            <h4 style="margin:0 0 5px 0; color:#d9534f; font-weight:bold;">{headline}</h4>
+            <small style="color:gray;">發布時間：{eff_time}</small>
+            {typhoon_card_html}
+            <div style="margin-top:12px;">
+                <b style="color:#0056b3;">【警戒區域】</b>：<span style="color:#444;">{area_str if area_str else "無"}</span><br><br>
+                {desc_text}
+            </div>
+            """
+except Exception as e:
+    print(f"CWA JSON 警報解析失敗: {e}")
+
+if not alert_html:
+    alert_html = """
+    <div style="padding:10px;">
+        <h4 style="margin:0 0 5px 0; color:#0275d8; font-weight:bold;">即時颱風消息</h4>
+        <p style="color:gray; line-height:1.6;">目前臺灣周邊海域尚未發布颱風警報。<br>請參考地圖上之各國預測路徑，或留意氣象署最新公告。</p>
+    </div>
+    """
+
+# --- [分頁 2 & 3] 風力與雨量預測 ---
+print("正在讀取 CWA 風力預測 (F-C0034-005)...")
+wind_html = parse_cwa_forecast_xml(get_cwa_product_xml(f"https://opendata.cwa.gov.tw/fileapi/v1/opendataapi/F-C0034-005?Authorization={CWA_API_KEY}&downloadType=WEB&format=JSON"), forecast_type="風力")
+
+print("正在讀取 CWA 總雨量預測 (F-C0034-007)...")
+rain_html = parse_cwa_forecast_xml(get_cwa_product_xml(f"https://opendata.cwa.gov.tw/fileapi/v1/opendataapi/F-C0034-007?Authorization={CWA_API_KEY}&downloadType=WEB&format=JSON"), forecast_type="總雨量")
+
+# --- [HTML UI 注入] 介面面板 ---
+# [升級] 使用 RWD 相對寬度 (min(380px, 90vw)) 取代固定寬度，手機版不破版
+tab_panel_html = f"""
+<div class="glass-panel" style="position: fixed; bottom: 20px; right: 20px; width: min(380px, 90vw); height: min(420px, 60vh); 
+     z-index:9999; padding: 16px; display: flex; flex-direction: column;">
     
+    <div style="font-size:16px; font-weight:800; color:#222; margin-bottom:12px; display:flex; align-items:center;">
+        <i class="fa-solid fa-cloud-showers-heavy" style="color:#0056b3; margin-right:8px;"></i> CWA 颱風預報總覽
+    </div>
     
-<div style="position: fixed; bottom: 30px; right: 30px; width: 360px; height: 360px; 
-     background-color: white; border:2px solid #337ab7; z-index:9999; font-size:13px;
-     padding: 10px; border-radius: 8px; box-shadow: 0 0 10px rgba(0,0,0,0.3); opacity: 0.95;
-     display: flex; flex-direction: column;">
-    
-    <b style="font-size:15px; color:#333; margin-bottom:6px;">中央氣象署 (CWA) 颱風預報總覽</b>
-    
-    <div style="display: flex; border-bottom: 2px solid #337ab7; margin-bottom: 8px;">
-        <button onclick="switchTab('tab-alert')" id="btn-alert" style="flex:1; padding:6px; border:none; background:#337ab7; color:white; font-weight:bold; cursor:pointer; border-radius:4px 4px 0 0;">颱風消息/位置</button>
-        <button onclick="switchTab('tab-wind')" id="btn-wind" style="flex:1; padding:6px; border:none; background:#eee; color:#333; font-weight:bold; cursor:pointer; border-radius:4px 4px 0 0;">風力預測</button>
-        <button onclick="switchTab('tab-rain')" id="btn-rain" style="flex:1; padding:6px; border:none; background:#eee; color:#333; font-weight:bold; cursor:pointer; border-radius:4px 4px 0 0;">雨量預測</button>
+    <div class="nav-tabs">
+        <button onclick="switchTab('alert')" id="btn-alert" class="active">最新動態</button>
+        <button onclick="switchTab('wind')" id="btn-wind">風力預測</button>
+        <button onclick="switchTab('rain')" id="btn-rain">雨量預測</button>
     </div>
 
-    <div id="tab-alert" class="tab-content" style="overflow-y:auto; flex:1;">
-            <h4 style="margin:0 0 5px 0; color:#d9534f;">解除颱風警報</h4>
-            <small>發布時間：2026-08-28T14:30:00+08:00</small><hr style="margin:5px 0;">
-            
-                <div style="background:#fff3cd; border:1px solid #ffeeba; padding:8px; border-radius:6px; margin:6px 0; font-size:12px; color:#856404;">
-                    <b>颱風名稱</b>：<b>沙德爾 (SAUDEL)</b><br>
-                    <b>颱風強度</b>：輕度颱風<br>
-                    <b style="color:#d9534f; font-size:13px;">🌀 最新中心位置</b>：<b style="color:#d9534f; font-size:13px;">北緯 27.8°，東經 119.7°</b><br>
-                    <b>中心氣壓</b>：995 hPa<br>
-                    <b>最大風速</b>：20 m/s | <b>瞬間陣風</b>：28 m/s<br>
-                    <b>7級風暴風半徑</b>：90 km
-                </div>
-                
-            <b>【警戒區域】</b>：基隆市、臺北市、新北市、宜蘭縣、桃園市、新竹縣、新竹市、花蓮縣...<br><br>
-            <b>[命名與位置]</b> 輕度颱風 沙德爾（國際命名 SAUDEL）28日14時的中心位置在北緯 27.8 度，東經 119.7 度，即在馬祖的北方約 180 公里之處。<br><b>[強度與半徑]</b> 中心氣壓 995 百帕，近中心最大風速每秒 20 公尺（約每小時 72 公里），相當於 8 級風，瞬間最大陣風每秒 28 公尺（約每小時 101 公里），相當於 10 級風，七級風暴風半徑 80 公里，十級風暴風半徑 – 公里。<br><b>[移速與預測]</b> 以每小時25公里速度，向西南西進行，預測29日2時的中心位置在北緯 27.3 度，東經 116.6 度，即在馬祖的西北西方約 360 公里之處。<br><b>[颱風動態]</b> 根據最新資料顯示，第18號颱風過去3小時強度減弱，暴風圈亦縮小，目前中心在馬祖北方，向西南西移動，對臺灣北部海面的威脅已解除。<br><b>[豪雨特報]</b> 西南風影響，易有短延時強降雨，今(28)日屏東縣及高雄市山區有局部大雨或豪雨，臺中、南投、南部地區及雲林、嘉義山區有局部大雨發生的機率，請注意雷擊及強陣風；連日降雨，山區請慎防坍方、落石及溪水暴漲；低窪地區請慎防積水。<br><b>[強風特報]</b> 西南風偏強，今(28)日桃園市、新竹市、新竹縣、屏東縣、連江縣及蘭嶼、綠島局部地區有平均風6級以上或陣風8級以上發生的機率(黃色燈號)，請注意。<br><b>[注意事項]</b> ＊今(28)日基隆北海岸、東半部沿海(含蘭嶼、綠島)及馬祖易有長浪發生，臺灣附近各海面風浪仍大，其中馬祖沿海有3公尺左右大浪，前往海邊活動請注意安全。 ＊天氣高溫炎熱及西南風沉降影響，今(28)日白天臺北市、宜蘭縣、花蓮縣、臺東縣、金門縣為黃色燈號，請注意。＊自27日0時至28日14時出現較大累積雨量如下:屏東縣大漢山330.0毫米，高雄市多納林道295.0毫米。＊此為第18號颱風最後一次報告。<br>
-            </div>
-    <div id="tab-wind" class="tab-content" style="display:none; overflow-y:auto; flex:1;"><p style='color:gray;'>非警報發布期間，暫無最新風力資料。</p></div>
-    <div id="tab-rain" class="tab-content" style="display:none; overflow-y:auto; flex:1;"><p style='color:gray;'>非警報發布期間，暫無最新總雨量資料。</p></div>
+    <div id="tab-alert" class="tab-content" style="overflow-y:auto; flex:1; padding-right:4px;">{alert_html}</div>
+    <div id="tab-wind" class="tab-content" style="display:none; overflow-y:auto; flex:1; padding-right:4px;">{wind_html}</div>
+    <div id="tab-rain" class="tab-content" style="display:none; overflow-y:auto; flex:1; padding-right:4px;">{rain_html}</div>
 </div>
 
 <script>
-function switchTab(tabId) {
+function switchTab(tabName) {{
     document.querySelectorAll('.tab-content').forEach(el => el.style.display = 'none');
-    document.getElementById(tabId).style.display = 'block';
+    document.querySelectorAll('.nav-tabs button').forEach(el => el.classList.remove('active'));
     
-    document.getElementById('btn-alert').style.background = (tabId === 'tab-alert') ? '#337ab7' : '#eee';
-    document.getElementById('btn-alert').style.color = (tabId === 'tab-alert') ? 'white' : '#333';
-    
-    document.getElementById('btn-wind').style.background = (tabId === 'tab-wind') ? '#337ab7' : '#eee';
-    document.getElementById('btn-wind').style.color = (tabId === 'tab-wind') ? 'white' : '#333';
-    
-    document.getElementById('btn-rain').style.background = (tabId === 'tab-rain') ? '#337ab7' : '#eee';
-    document.getElementById('btn-rain').style.color = (tabId === 'tab-rain') ? 'white' : '#333';
-}
+    document.getElementById('tab-' + tabName).style.display = 'block';
+    document.getElementById('btn-' + tabName).classList.add('active');
+}}
 </script>
-    
-<div style="position: fixed; bottom: 30px; left: 30px; width: 180px; 
-     background-color: white; border:2px solid gray; z-index:9999; font-size:12px;
-     padding: 10px; border-radius: 6px; opacity: 0.95;">
-  <b>各國與 CWA 圖例</b><br>
-  <i class="fa fa-minus" style="color:red"></i> 台灣 (CWA/NCDR)<br>
-  <i class="fa fa-minus" style="color:blue"></i> 日本 (JMA)<br>
-  <i class="fa fa-minus" style="color:green"></i> 美國 (JTWC)<br>
-  <i class="fa fa-minus" style="color:purple"></i> 韓國 (KMA)<br>
-  <i class="fa fa-minus" style="color:orange"></i> 中國 (CMA)<br>
-  <span style="color:#d9534f; font-weight:bold;">- - -</span> 颱風歷史移動軌跡<br>
-  <i class="fa fa-square" style="color:#d9534f; opacity:0.6;"></i> CWA 暴風圈/潛勢區<br>
-  <i class="fa fa-square" style="color:purple; opacity:0.5;"></i> CWA 侵襲機率區
+"""
+m.get_root().html.add_child(folium.Element(tab_panel_html))
+
+# [升級] 讓圖例也套用毛玻璃特效，並微調排版
+legend_html = """
+<div class="glass-panel" style="position: fixed; bottom: 20px; left: 20px; width: 190px; 
+     z-index:9999; font-size:13px; padding: 12px; color: #333;">
+  <b style="font-size:14px; display:block; margin-bottom:8px; border-bottom:1px solid #ccc; padding-bottom:4px;">圖例說明</b>
+  <div style="line-height: 1.8;">
+      <i class="fa-solid fa-minus" style="color:red; width:16px;"></i> 台灣 (CWA/NCDR)<br>
+      <i class="fa-solid fa-minus" style="color:blue; width:16px;"></i> 日本 (JMA)<br>
+      <i class="fa-solid fa-minus" style="color:green; width:16px;"></i> 美國 (JTWC)<br>
+      <i class="fa-solid fa-minus" style="color:purple; width:16px;"></i> 韓國 (KMA)<br>
+      <i class="fa-solid fa-minus" style="color:orange; width:16px;"></i> 中國 (CMA)<br>
+      <span style="color:#d9534f; font-weight:bold; letter-spacing:2px; display:inline-block; width:16px;">--</span> 歷史移動軌跡<br>
+      <i class="fa-solid fa-square" style="color:#d9534f; opacity:0.6; width:16px;"></i> 暴風圈/潛勢區<br>
+      <i class="fa-solid fa-square" style="color:purple; opacity:0.5; width:16px;"></i> 侵襲機率區
+  </div>
 </div>
-    
-            <div class="folium-map" id="map_218e4b5e0c6f850f457d20905e182aed" ></div>
-        
-</body>
-<script>
-    
-    
-            var map_218e4b5e0c6f850f457d20905e182aed = L.map(
-                "map_218e4b5e0c6f850f457d20905e182aed",
-                {
-                    center: [23.8, 121.0],
-                    crs: L.CRS.EPSG3857,
-                    ...{
-  "zoom": 6,
-  "zoomControl": true,
-  "preferCanvas": false,
-}
-
-                }
-            );
-
-            
-
-        
-    
-            var tile_layer_0115f4fa5d760357b7aa0f73792a5342 = L.tileLayer(
-                "https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}",
-                {
-  "minZoom": 0,
-  "maxZoom": 18,
-  "maxNativeZoom": 18,
-  "noWrap": false,
-  "attribution": "Esri World Street Map",
-  "subdomains": "abc",
-  "detectRetina": false,
-  "tms": false,
-  "opacity": 1,
-}
-
-            );
-        
-    
-            tile_layer_0115f4fa5d760357b7aa0f73792a5342.addTo(map_218e4b5e0c6f850f457d20905e182aed);
-        
-    
-            var feature_group_d1a2e4fa8732487f2b9a89c9f081f426 = L.featureGroup(
-                {
-}
-            );
-        
-    
-            var polygon_01f58a4e54956a20c500e01e2c83ee68 = L.polygon(
-                [[14.081821, 134.422078], [14.082237, 134.668831], [14.082237, 134.915584], [14.082237, 135.162338], [14.082237, 135.409091], [14.082237, 135.655844], [14.082237, 135.902597], [14.082237, 136.149351], [14.121324, 136.220529], [14.287857, 136.396104], [14.368873, 136.47686], [14.535406, 136.642857], [14.616422, 136.723613], [14.782955, 136.88961], [14.863971, 136.970366], [15.030504, 137.136364], [15.11152, 137.217119], [15.359069, 137.226092], [15.522544, 137.383117], [15.606618, 137.463872], [15.854167, 137.472845], [16.101716, 137.472845], [16.349265, 137.472845], [16.596814, 137.472845], [16.717569, 137.383117], [16.844363, 137.256731], [17.091912, 137.226092], [17.212667, 137.136364], [17.339461, 137.009978], [17.460216, 136.88961], [17.58701, 136.763225], [17.834559, 136.700242], [17.863344, 136.642857], [17.961507, 136.396104], [18.082108, 136.275891], [18.175523, 136.149351], [18.329657, 135.940559], [18.34777, 135.902597], [18.37649, 135.655844], [18.412173, 135.409091], [18.491516, 135.162338], [18.577206, 134.977273], [18.592059, 134.915584], [18.640861, 134.668831], [18.718662, 134.422078], [18.824755, 134.263451], [18.87236, 134.175325], [18.994945, 133.928571], [19.072304, 133.805195], [19.131244, 133.681818], [19.25384, 133.435065], [19.319853, 133.311688], [19.362905, 133.188312], [19.45738, 132.941558], [19.567402, 132.722222], [19.577304, 132.694805], [19.654044, 132.448052], [19.761905, 132.201299], [19.814951, 132.077922], [19.850315, 131.954545], [19.946977, 131.707792], [20.0625, 131.491883], [20.077062, 131.461039], [20.203957, 131.214286], [20.310049, 131.029221], [20.348133, 130.967532], [20.557598, 130.720779], [20.750136, 130.474026], [20.805147, 130.403525], [20.942674, 130.227273], [21.052696, 130.103896], [21.162718, 129.980519], [21.300245, 129.804267], [21.370973, 129.733766], [21.547794, 129.528139], [21.583158, 129.487013], [21.795343, 129.27551], [21.826287, 129.24026], [22.007528, 128.993506], [22.042892, 128.944156], [22.207925, 128.746753], [22.290441, 128.623377], [22.372958, 128.5], [22.53799, 128.302597], [22.579248, 128.253247], [22.785539, 128.006494], [22.971201, 127.75974], [23.033088, 127.677489], [23.132108, 127.512987], [23.280637, 127.327922], [23.342525, 127.266234], [23.528186, 127.118182], [23.693219, 127.019481], [23.775735, 126.937229], [24.023284, 126.772727], [24.270833, 126.587662], [24.394608, 126.525974], [24.518382, 126.476623], [24.765931, 126.402597], [25.01348, 126.377922], [25.261029, 126.328571], [25.508578, 126.279221], [25.756127, 126.279221], [26.003676, 126.328571], [26.251225, 126.320346], [26.498775, 126.377922], [26.746324, 126.427273], [26.993873, 126.464286], [27.241422, 126.525974], [27.488971, 126.575325], [27.73652, 126.624675], [27.984069, 126.711039], [28.231618, 126.772727], [28.479167, 126.896104], [28.726716, 127.019481], [28.974265, 127.019481], [29.221814, 127.142857], [29.469363, 127.183983], [29.716912, 127.266234], [29.964461, 127.38961], [30.21201, 127.38961], [30.459559, 127.430736], [30.707108, 127.512987], [30.954657, 127.266234], [31.037173, 127.019481], [30.954657, 126.772727], [30.954657, 126.525974], [30.954657, 126.279221], [30.830882, 126.032468], [30.707108, 125.785714], [30.542075, 125.538961], [30.459559, 125.45671], [30.335784, 125.292208], [30.21201, 125.045455], [29.964461, 124.798701], [29.840686, 124.551948], [29.716912, 124.428571], [29.593137, 124.305195], [29.469363, 124.181818], [29.345588, 124.058442], [29.221814, 123.97619], [28.974265, 123.811688], [28.726716, 123.647186], [28.602941, 123.564935], [28.479167, 123.482684], [28.231618, 123.318182], [27.984069, 123.235931], [27.73652, 123.071429], [27.488971, 122.972727], [27.241422, 122.886364], [27.117647, 122.824675], [26.993873, 122.775325], [26.746324, 122.725974], [26.498775, 122.676623], [26.251225, 122.63961], [26.003676, 122.577922], [25.756127, 122.627273], [25.508578, 122.577922], [25.261029, 122.577922], [25.01348, 122.577922], [24.765931, 122.577922], [24.518382, 122.627273], [24.270833, 122.627273], [24.023284, 122.676623], [23.775735, 122.725974], [23.528186, 122.78355], [23.280637, 122.824675], [23.033088, 122.906926], [22.785539, 122.989177], [22.620507, 123.071429], [22.53799, 123.112554], [22.290441, 123.17013], [22.042892, 123.268831], [21.919118, 123.318182], [21.795343, 123.367532], [21.547794, 123.482684], [21.382761, 123.564935], [21.300245, 123.614286], [21.052696, 123.741187], [20.928922, 123.811688], [20.805147, 123.882189], [20.557598, 124.058442], [20.310049, 124.212662], [20.203957, 124.305195], [20.0625, 124.428571], [19.897467, 124.551948], [19.814951, 124.622449], [19.63813, 124.798701], [19.567402, 124.869202], [19.390581, 125.045455], [19.319853, 125.115955], [19.143032, 125.292208], [19.072304, 125.362709], [18.917586, 125.538961], [18.824755, 125.644712], [18.714733, 125.785714], [18.577206, 125.961967], [18.527696, 126.032468], [18.3606, 126.279221], [18.329657, 126.320346], [18.19213, 126.525974], [18.082108, 126.666976], [18.014594, 126.772727], [17.834559, 127.019481], [17.686029, 127.266234], [17.58701, 127.38961], [17.496992, 127.512987], [17.339461, 127.728896], [17.316956, 127.75974], [17.116667, 128.006494], [17.091912, 128.037338], [16.934381, 128.253247], [16.844363, 128.362915], [16.749152, 128.5], [16.596814, 128.697403], [16.56145, 128.746753], [16.390523, 128.993506], [16.349265, 129.055195], [16.250245, 129.24026], [16.101716, 129.462338], [16.086244, 129.487013], [15.96969, 129.733766], [15.854167, 129.925685], [15.823223, 129.980519], [15.695028, 130.227273], [15.606618, 130.364358], [15.554502, 130.474026], [15.412115, 130.720779], [15.359069, 130.813312], [15.300128, 130.967532], [15.188879, 131.214286], [15.11152, 131.351371], [15.070261, 131.461039], [14.99426, 131.707792], [14.896977, 131.954545], [14.863971, 132.036797], [14.825886, 132.201299], [14.767104, 132.448052], [14.698938, 132.694805], [14.631893, 132.941558], [14.616422, 132.968975], [14.574286, 133.188312], [14.52121, 133.435065], [14.368873, 133.671948], [14.365481, 133.681818], [14.316918, 133.928571], [14.223255, 134.175325], [14.121324, 134.294447], [14.081821, 134.422078]],
-                {"bubblingMouseEvents": true, "color": "purple", "dashArray": null, "dashOffset": null, "fill": true, "fillColor": "purple", "fillOpacity": 0.1, "fillRule": "evenodd", "lineCap": "round", "lineJoin": "round", "noClip": false, "opacity": 0.35, "smoothFactor": 1.0, "stroke": true, "weight": 1}
-            ).addTo(feature_group_d1a2e4fa8732487f2b9a89c9f081f426);
-        
-    
-        var popup_2523a92e83c82b1ead058502215f99d5 = L.popup({
-  "maxWidth": 300,
-});
-
-        
-            
-                var html_12c270f12f5ac0bfaae64ee7adb41fea = $(`<div id="html_12c270f12f5ac0bfaae64ee7adb41fea" style="width: 100.0%; height: 100.0%;"><b>侵襲機率：100%</b><br></div>`)[0];
-                popup_2523a92e83c82b1ead058502215f99d5.setContent(html_12c270f12f5ac0bfaae64ee7adb41fea);
-            
-        
-
-        polygon_01f58a4e54956a20c500e01e2c83ee68.bindPopup(popup_2523a92e83c82b1ead058502215f99d5)
-        ;
-
-        
-    
-    
-            polygon_01f58a4e54956a20c500e01e2c83ee68.bindTooltip(
-                `<div>
-                     <b>暴風圈侵襲機率：100%</b>
-                 </div>`,
-                {
-  "sticky": true,
-}
-            );
-        
-    
-            var polygon_0d137a51f852eda97051d27f49b0acd0 = L.polygon(
-                [[14.098473, 134.175325], [14.029151, 134.422078], [14.030121, 134.668831], [14.030121, 134.915584], [14.030121, 135.162338], [14.030121, 135.409091], [14.030121, 135.655844], [14.030121, 135.902597], [14.030121, 136.149351], [14.121324, 136.315435], [14.197839, 136.396104], [14.368873, 136.566588], [14.445388, 136.642857], [14.616422, 136.813341], [14.692937, 136.88961], [14.863971, 137.060094], [14.940486, 137.136364], [15.11152, 137.306848], [15.359069, 137.315821], [15.42913, 137.383117], [15.606618, 137.553601], [15.854167, 137.562574], [16.101716, 137.562574], [16.349265, 137.562574], [16.596814, 137.562574], [16.838325, 137.383117], [16.844363, 137.377099], [17.091912, 137.315821], [17.333423, 137.136364], [17.339461, 137.130345], [17.580972, 136.88961], [17.58701, 136.883592], [17.834559, 136.815011], [17.920913, 136.642857], [18.082108, 136.400433], [18.086376, 136.396104], [18.268937, 136.149351], [18.329657, 136.0671], [18.408148, 135.902597], [18.443396, 135.655844], [18.515319, 135.409091], [18.577206, 135.28035], [18.626716, 135.162338], [18.691078, 134.915584], [18.782318, 134.668831], [18.824755, 134.581742], [18.912595, 134.422078], [19.062783, 134.175325], [19.072304, 134.159903], [19.200347, 133.928571], [19.319853, 133.736652], [19.351795, 133.681818], [19.46131, 133.435065], [19.567402, 133.207293], [19.575938, 133.188312], [19.673494, 132.941558], [19.775343, 132.694805], [19.814951, 132.605077], [19.881599, 132.448052], [19.983284, 132.201299], [20.0625, 132.003896], [20.086076, 131.954545], [20.215745, 131.707792], [20.310049, 131.54329], [20.368296, 131.461039], [20.526654, 131.214286], [20.557598, 131.169421], [20.716737, 130.967532], [20.805147, 130.864719], [20.938443, 130.720779], [21.052696, 130.572727], [21.151716, 130.474026], [21.300245, 130.325974], [21.382761, 130.227273], [21.547794, 130.062771], [21.637812, 129.980519], [21.795343, 129.823495], [21.894363, 129.733766], [22.042892, 129.569264], [22.110406, 129.487013], [22.290441, 129.307556], [22.357955, 129.24026], [22.53799, 129.042857], [22.579248, 128.993506], [22.785539, 128.769185], [22.806168, 128.746753], [22.99183, 128.5], [23.033088, 128.450649], [23.253132, 128.253247], [23.280637, 128.217996], [23.492822, 128.006494], [23.528186, 127.975649], [23.775735, 127.75974], [24.023284, 127.618738], [24.270833, 127.512987], [24.518382, 127.371985], [24.765931, 127.266234], [25.01348, 127.266234], [25.261029, 127.183983], [25.508578, 127.160482], [25.756127, 127.125232], [26.003676, 127.160482], [26.251225, 127.183983], [26.498775, 127.216883], [26.622549, 127.266234], [26.746324, 127.301484], [26.993873, 127.348485], [27.241422, 127.407236], [27.427083, 127.512987], [27.488971, 127.543831], [27.73652, 127.611688], [27.984069, 127.75974], [28.231618, 127.883117], [28.479167, 128.006494], [28.726716, 128.154545], [28.891748, 128.253247], [28.974265, 128.314935], [29.221814, 128.438312], [29.30433, 128.5], [29.469363, 128.598701], [29.655025, 128.746753], [29.716912, 128.796104], [29.964461, 128.944156], [30.088235, 128.993506], [30.21201, 129.075758], [30.459559, 129.24026], [30.707108, 129.322511], [30.954657, 129.425325], [31.078431, 129.487013], [31.202206, 129.569264], [31.449755, 129.61039], [31.697304, 129.651515], [31.821078, 129.733766], [31.944853, 129.795455], [32.192402, 129.816017], [32.439951, 129.898268], [32.6875, 129.857143], [32.935049, 129.733766], [33.182598, 129.487013], [33.182598, 129.24026], [33.430147, 128.993506], [33.347631, 128.746753], [33.347631, 128.5], [33.306373, 128.253247], [33.244485, 128.006494], [33.182598, 127.75974], [33.083578, 127.512987], [33.058824, 127.266234], [32.935049, 127.019481], [32.811275, 126.772727], [32.6875, 126.525974], [32.563725, 126.279221], [32.439951, 126.032468], [32.254289, 125.785714], [32.192402, 125.703463], [32.093382, 125.538961], [31.944853, 125.353896], [31.895343, 125.292208], [31.759191, 125.045455], [31.697304, 124.922078], [31.614788, 124.798701], [31.449755, 124.634199], [31.387868, 124.551948], [31.202206, 124.305195], [30.954657, 124.058442], [30.707108, 123.811688], [30.459559, 123.626623], [30.397672, 123.564935], [30.21201, 123.416883], [30.11299, 123.318182], [29.964461, 123.17013], [29.840686, 123.071429], [29.716912, 122.948052], [29.551879, 122.824675], [29.469363, 122.762987], [29.221814, 122.63961], [29.159926, 122.577922], [28.974265, 122.42987], [28.809232, 122.331169], [28.726716, 122.295918], [28.479167, 122.207792], [28.231618, 122.084416], [27.984069, 122.04329], [27.73652, 121.985714], [27.488971, 121.919913], [27.241422, 121.837662], [26.993873, 121.796537], [26.746324, 121.755411], [26.498775, 121.731911], [26.251225, 121.731911], [26.003676, 121.714286], [25.756127, 121.802412], [25.508578, 121.802412], [25.261029, 121.802412], [25.01348, 121.837662], [24.765931, 121.837662], [24.518382, 121.872913], [24.270833, 121.908163], [24.023284, 121.943414], [23.775735, 122.013915], [23.528186, 122.084416], [23.280637, 122.13925], [23.033088, 122.207792], [22.785539, 122.300325], [22.661765, 122.331169], [22.53799, 122.366419], [22.290441, 122.48539], [22.042892, 122.577922], [21.795343, 122.701299], [21.547794, 122.824675], [21.300245, 122.972727], [21.102206, 123.071429], [21.052696, 123.102273], [20.805147, 123.263348], [20.722631, 123.318182], [20.557598, 123.42785], [20.351307, 123.564935], [20.310049, 123.595779], [20.0625, 123.780844], [20.027136, 123.811688], [19.814951, 123.996753], [19.744223, 124.058442], [19.567402, 124.234694], [19.496674, 124.305195], [19.319853, 124.459416], [19.237337, 124.551948], [19.072304, 124.737013], [19.022794, 124.798701], [18.824755, 125.018038], [18.80225, 125.045455], [18.601961, 125.292208], [18.577206, 125.319625], [18.424868, 125.538961], [18.329657, 125.676046], [18.253488, 125.785714], [18.082108, 126.032468], [17.92977, 126.279221], [17.834559, 126.416306], [17.768546, 126.525974], [17.622374, 126.772727], [17.58701, 126.822078], [17.454984, 127.019481], [17.339461, 127.192208], [17.286415, 127.266234], [17.109594, 127.512987], [17.091912, 127.535419], [16.926879, 127.75974], [16.844363, 127.862554], [16.72884, 128.006494], [16.596814, 128.18595], [16.547304, 128.253247], [16.368307, 128.5], [16.349265, 128.527417], [16.217239, 128.746753], [16.101716, 128.919481], [16.058031, 128.993506], [15.92018, 129.24026], [15.854167, 129.349928], [15.789022, 129.487013], [15.664864, 129.733766], [15.606618, 129.832468], [15.54204, 129.980519], [15.420956, 130.227273], [15.359069, 130.350649], [15.309559, 130.474026], [15.19721, 130.720779], [15.11152, 130.891608], [15.077375, 130.967532], [14.978904, 131.214286], [14.863971, 131.461039], [14.786612, 131.707792], [14.720232, 131.954545], [14.635464, 132.201299], [14.616422, 132.262987], [14.570006, 132.448052], [14.517402, 132.694805], [14.495821, 132.941558], [14.468946, 133.188312], [14.394262, 133.435065], [14.368873, 133.474545], [14.29766, 133.681818], [14.255795, 133.928571], [14.121324, 134.145714], [14.098473, 134.175325]],
-                {"bubblingMouseEvents": true, "color": "purple", "dashArray": null, "dashOffset": null, "fill": true, "fillColor": "purple", "fillOpacity": 0.1, "fillRule": "evenodd", "lineCap": "round", "lineJoin": "round", "noClip": false, "opacity": 0.35, "smoothFactor": 1.0, "stroke": true, "weight": 1}
-            ).addTo(feature_group_d1a2e4fa8732487f2b9a89c9f081f426);
-        
-    
-        var popup_a602a8b303f24e2064fb1b9043e1b389 = L.popup({
-  "maxWidth": 300,
-});
-
-        
-            
-                var html_1cb891025ad8ba520ae48a8a69ef078c = $(`<div id="html_1cb891025ad8ba520ae48a8a69ef078c" style="width: 100.0%; height: 100.0%;"><b>侵襲機率：80%</b><br></div>`)[0];
-                popup_a602a8b303f24e2064fb1b9043e1b389.setContent(html_1cb891025ad8ba520ae48a8a69ef078c);
-            
-        
-
-        polygon_0d137a51f852eda97051d27f49b0acd0.bindPopup(popup_a602a8b303f24e2064fb1b9043e1b389)
-        ;
-
-        
-    
-    
-            polygon_0d137a51f852eda97051d27f49b0acd0.bindTooltip(
-                `<div>
-                     <b>暴風圈侵襲機率：80%</b>
-                 </div>`,
-                {
-  "sticky": true,
-}
-            );
-        
-    
-            var polygon_9a5bf4d1eb1ffceca97f05e35987ff9d = L.polygon(
-                [[14.022304, 134.175325], [13.976481, 134.422078], [13.978006, 134.668831], [13.978006, 134.915584], [13.978006, 135.162338], [13.978006, 135.409091], [13.978006, 135.655844], [13.978006, 135.902597], [13.978006, 136.149351], [14.104053, 136.396104], [14.121324, 136.413319], [14.351602, 136.642857], [14.368873, 136.660072], [14.599151, 136.88961], [14.616422, 136.906826], [14.8467, 137.136364], [14.863971, 137.153579], [15.094249, 137.383117], [15.11152, 137.400332], [15.359069, 137.410534], [15.589347, 137.62987], [15.606618, 137.647085], [15.854167, 137.657287], [16.101716, 137.657287], [16.349265, 137.657287], [16.596814, 137.657287], [16.625598, 137.62987], [16.844363, 137.465368], [17.091912, 137.410534], [17.120697, 137.383117], [17.339461, 137.218615], [17.421977, 137.136364], [17.58701, 136.971861], [17.834559, 136.927994], [17.871428, 136.88961], [17.978483, 136.642857], [18.082108, 136.487013], [18.171738, 136.396104], [18.329657, 136.188607], [18.367327, 136.149351], [18.468526, 135.902597], [18.510301, 135.655844], [18.577206, 135.479592], [18.624358, 135.409091], [18.716734, 135.162338], [18.790098, 134.915584], [18.824755, 134.833333], [18.933058, 134.668831], [19.072304, 134.422078], [19.234491, 134.175325], [19.319853, 134.021104], [19.37698, 133.928571], [19.511504, 133.681818], [19.567402, 133.566667], [19.64075, 133.435065], [19.746662, 133.188312], [19.814951, 133.02381], [19.858003, 132.941558], [19.979984, 132.694805], [20.0625, 132.475469], [20.075529, 132.448052], [20.211029, 132.201299], [20.310049, 131.981962], [20.326552, 131.954545], [20.495711, 131.707792], [20.557598, 131.618064], [20.673121, 131.461039], [20.805147, 131.296537], [20.875875, 131.214286], [21.052696, 131.008658], [21.090781, 130.967532], [21.300245, 130.758741], [21.33833, 130.720779], [21.547794, 130.494589], [21.572549, 130.474026], [21.795343, 130.251948], [21.820098, 130.227273], [22.042892, 130.005195], [22.070398, 129.980519], [22.290441, 129.801063], [22.364706, 129.733766], [22.53799, 129.541847], [22.593001, 129.487013], [22.785539, 129.271104], [22.816483, 129.24026], [23.033088, 129.024351], [23.064032, 128.993506], [23.280637, 128.777597], [23.311581, 128.746753], [23.528186, 128.574026], [23.634279, 128.5], [23.775735, 128.390332], [24.023284, 128.253247], [24.270833, 128.143579], [24.518382, 128.037338], [24.600899, 128.006494], [24.765931, 127.944805], [25.01348, 127.944805], [25.261029, 127.900742], [25.508578, 127.883117], [25.756127, 127.883117], [26.003676, 127.965368], [26.251225, 128.006494], [26.498775, 128.047619], [26.746324, 128.105195], [26.993873, 128.203896], [27.117647, 128.253247], [27.241422, 128.302597], [27.488971, 128.417749], [27.654003, 128.5], [27.73652, 128.549351], [27.984069, 128.705628], [28.045956, 128.746753], [28.231618, 128.894805], [28.355392, 128.993506], [28.479167, 129.116883], [28.644199, 129.24026], [28.726716, 129.301948], [28.974265, 129.487013], [29.221814, 129.684416], [29.30433, 129.733766], [29.469363, 129.832468], [29.655025, 129.980519], [29.716912, 130.042208], [29.964461, 130.227273], [30.21201, 130.350649], [30.377042, 130.474026], [30.459559, 130.535714], [30.707108, 130.671429], [30.789624, 130.720779], [30.954657, 130.844156], [31.11969, 130.967532], [31.202206, 131.029221], [31.449755, 131.152597], [31.573529, 131.214286], [31.697304, 131.275974], [31.944853, 131.378788], [32.192402, 131.399351], [32.439951, 131.411688], [32.6875, 131.461039], [32.935049, 131.584416], [33.182598, 131.625541], [33.430147, 131.625541], [33.677696, 131.584416], [33.925245, 131.584416], [34.172794, 131.461039], [34.420343, 131.214286], [34.667892, 130.967532], [34.791667, 130.720779], [34.791667, 130.474026], [34.853554, 130.227273], [34.915441, 129.980519], [34.915441, 129.733766], [34.915441, 129.487013], [34.915441, 129.24026], [34.832925, 128.993506], [34.791667, 128.746753], [34.750408, 128.5], [34.750408, 128.253247], [34.667892, 128.006494], [34.585376, 127.75974], [34.48223, 127.512987], [34.420343, 127.38961], [34.337827, 127.266234], [34.172794, 127.019481], [34.04902, 126.772727], [33.925245, 126.525974], [33.842729, 126.279221], [33.677696, 126.032468], [33.529167, 125.785714], [33.430147, 125.662338], [33.331127, 125.538961], [33.182598, 125.353896], [33.133088, 125.292208], [32.935049, 125.045455], [32.770016, 124.798701], [32.6875, 124.71645], [32.563725, 124.551948], [32.439951, 124.387446], [32.390441, 124.305195], [32.192402, 124.107792], [32.142892, 124.058442], [31.944853, 123.861039], [31.895343, 123.811688], [31.697304, 123.564935], [31.449755, 123.318182], [31.202206, 123.071429], [30.954657, 122.874026], [30.905147, 122.824675], [30.707108, 122.660173], [30.608088, 122.577922], [30.459559, 122.454545], [30.273897, 122.331169], [30.21201, 122.281818], [29.964461, 122.084416], [29.716912, 121.961039], [29.53125, 121.837662], [29.469363, 121.796537], [29.221814, 121.69666], [28.974265, 121.590909], [28.726716, 121.449907], [28.479167, 121.385281], [28.39665, 121.344156], [28.231618, 121.273655], [27.984069, 121.220779], [27.73652, 121.146753], [27.488971, 121.097403], [27.241422, 121.056277], [26.993873, 121.035714], [26.746324, 120.974026], [26.498775, 120.949351], [26.251225, 120.9329], [26.003676, 120.9329], [25.756127, 120.991651], [25.508578, 120.991651], [25.261029, 121.015152], [25.01348, 121.026902], [24.765931, 121.062152], [24.518382, 121.097403], [24.270833, 121.138528], [24.023284, 121.203154], [23.775735, 121.30303], [23.651961, 121.344156], [23.528186, 121.379406], [23.280637, 121.426407], [23.033088, 121.520408], [22.868056, 121.590909], [22.785539, 121.621753], [22.53799, 121.714286], [22.290441, 121.837662], [22.042892, 121.961039], [21.795343, 122.084416], [21.547794, 122.190167], [21.300245, 122.331169], [21.052696, 122.472171], [20.904167, 122.577922], [20.805147, 122.648423], [20.557598, 122.824675], [20.310049, 122.989177], [20.211029, 123.071429], [20.0625, 123.194805], [19.938725, 123.318182], [19.814951, 123.423933], [19.673494, 123.564935], [19.567402, 123.657468], [19.412684, 123.811688], [19.319853, 123.91744], [19.196078, 124.058442], [19.072304, 124.181818], [18.962282, 124.305195], [18.824755, 124.459416], [18.742239, 124.551948], [18.577206, 124.763451], [18.552451, 124.798701], [18.370915, 125.045455], [18.329657, 125.100289], [18.185253, 125.292208], [18.082108, 125.446429], [18.024981, 125.538961], [17.887605, 125.785714], [17.834559, 125.878247], [17.731413, 126.032468], [17.602482, 126.279221], [17.58701, 126.303896], [17.427871, 126.525974], [17.339461, 126.649351], [17.256944, 126.772727], [17.091912, 127.019481], [16.932773, 127.266234], [16.844363, 127.378394], [16.751532, 127.512987], [16.596814, 127.737308], [16.58031, 127.75974], [16.411152, 128.006494], [16.349265, 128.088745], [16.232771, 128.253247], [16.101716, 128.455136], [16.070772, 128.5], [15.92293, 128.746753], [15.854167, 128.858914], [15.775993, 128.993506], [15.656127, 129.24026], [15.606618, 129.338961], [15.535889, 129.487013], [15.426582, 129.733766], [15.359069, 129.898268], [15.323704, 129.980519], [15.216252, 130.227273], [15.11152, 130.474026], [15.006787, 130.720779], [14.906651, 130.967532], [14.863971, 131.070346], [14.802083, 131.214286], [14.709252, 131.461039], [14.631893, 131.707792], [14.616422, 131.762626], [14.554534, 131.954545], [14.481395, 132.201299], [14.415288, 132.448052], [14.375945, 132.694805], [14.368873, 132.941558], [14.361137, 133.188312], [14.286356, 133.435065], [14.229838, 133.681818], [14.194671, 133.928571], [14.121324, 134.047013], [14.022304, 134.175325]],
-                {"bubblingMouseEvents": true, "color": "purple", "dashArray": null, "dashOffset": null, "fill": true, "fillColor": "purple", "fillOpacity": 0.06, "fillRule": "evenodd", "lineCap": "round", "lineJoin": "round", "noClip": false, "opacity": 0.35, "smoothFactor": 1.0, "stroke": true, "weight": 1}
-            ).addTo(feature_group_d1a2e4fa8732487f2b9a89c9f081f426);
-        
-    
-        var popup_0df962661efccf538d88791c2225c75a = L.popup({
-  "maxWidth": 300,
-});
-
-        
-            
-                var html_f085f4818a2f57938f5026202d6884c2 = $(`<div id="html_f085f4818a2f57938f5026202d6884c2" style="width: 100.0%; height: 100.0%;"><b>侵襲機率：60%</b><br></div>`)[0];
-                popup_0df962661efccf538d88791c2225c75a.setContent(html_f085f4818a2f57938f5026202d6884c2);
-            
-        
-
-        polygon_9a5bf4d1eb1ffceca97f05e35987ff9d.bindPopup(popup_0df962661efccf538d88791c2225c75a)
-        ;
-
-        
-    
-    
-            polygon_9a5bf4d1eb1ffceca97f05e35987ff9d.bindTooltip(
-                `<div>
-                     <b>暴風圈侵襲機率：60%</b>
-                 </div>`,
-                {
-  "sticky": true,
-}
-            );
-        
-    
-            var polygon_a66a2d61997caa1002005dac318fea0d = L.polygon(
-                [[13.946135, 134.175325], [13.923811, 134.422078], [13.92589, 134.668831], [13.92589, 134.915584], [13.92589, 135.162338], [13.92589, 135.409091], [13.92589, 135.655844], [13.92589, 135.902597], [13.92589, 136.149351], [13.988914, 136.396104], [14.121324, 136.528088], [14.236463, 136.642857], [14.368873, 136.774841], [14.484012, 136.88961], [14.616422, 137.021595], [14.731561, 137.136364], [14.863971, 137.268348], [14.97911, 137.383117], [15.11152, 137.515101], [15.359069, 137.520202], [15.474208, 137.62987], [15.606618, 137.761854], [15.854167, 137.766955], [16.101716, 137.766955], [16.349265, 137.766955], [16.596814, 137.766955], [16.740738, 137.62987], [16.844363, 137.551948], [17.091912, 137.520202], [17.235836, 137.383117], [17.339461, 137.305195], [17.508836, 137.136364], [17.58701, 137.058442], [17.834559, 137.037662], [17.976768, 136.88961], [18.036052, 136.642857], [18.082108, 136.573593], [18.257099, 136.396104], [18.329657, 136.300767], [18.474957, 136.149351], [18.528904, 135.902597], [18.577206, 135.655844], [18.742239, 135.409091], [18.806751, 135.162338], [18.824755, 135.104278], [18.971034, 134.915584], [19.072304, 134.713695], [19.110388, 134.668831], [19.287564, 134.422078], [19.319853, 134.365135], [19.450142, 134.175325], [19.567402, 133.928571], [19.720647, 133.681818], [19.814951, 133.462482], [19.833993, 133.435065], [19.971298, 133.188312], [20.0625, 132.972403], [20.083129, 132.941558], [20.227533, 132.694805], [20.310049, 132.50974], [20.351307, 132.448052], [20.508088, 132.201299], [20.557598, 132.119048], [20.671851, 131.954545], [20.805147, 131.762626], [20.854657, 131.707792], [21.052696, 131.461039], [21.277741, 131.214286], [21.300245, 131.18961], [21.547794, 130.967532], [21.795343, 130.720779], [22.042892, 130.50487], [22.078256, 130.474026], [22.290441, 130.288961], [22.361169, 130.227273], [22.53799, 130.073052], [22.630821, 129.980519], [22.785539, 129.826299], [22.891632, 129.733766], [23.033088, 129.61039], [23.198121, 129.487013], [23.280637, 129.416512], [23.528186, 129.24026], [23.775735, 129.075758], [24.023284, 128.993506], [24.270833, 128.894805], [24.518382, 128.808442], [24.765931, 128.796104], [25.01348, 128.808442], [25.261029, 128.796104], [25.508578, 128.845455], [25.756127, 128.87013], [25.92116, 128.993506], [26.003676, 129.042857], [26.251225, 129.092208], [26.498775, 129.158009], [26.622549, 129.24026], [26.746324, 129.301948], [26.993873, 129.404762], [27.241422, 129.487013], [27.488971, 129.651515], [27.612745, 129.733766], [27.73652, 129.816017], [27.984069, 129.980519], [28.231618, 130.227273], [28.39665, 130.474026], [28.479167, 130.556277], [28.726716, 130.720779], [28.974265, 130.967532], [29.221814, 131.132035], [29.345588, 131.214286], [29.469363, 131.337662], [29.593137, 131.461039], [29.716912, 131.54329], [29.964461, 131.707792], [30.21201, 131.954545], [30.459559, 132.119048], [30.583333, 132.201299], [30.707108, 132.28355], [30.954657, 132.448052], [31.202206, 132.571429], [31.449755, 132.694805], [31.697304, 132.818182], [31.944853, 132.941558], [32.192402, 133.106061], [32.316176, 133.188312], [32.439951, 133.270563], [32.6875, 133.352814], [32.935049, 133.435065], [33.182598, 133.435065], [33.430147, 133.558442], [33.677696, 133.558442], [33.925245, 133.558442], [34.172794, 133.517316], [34.420343, 133.599567], [34.667892, 133.558442], [34.915441, 133.558442], [35.16299, 133.435065], [35.410539, 133.311688], [35.658088, 133.188312], [35.905637, 132.941558], [36.153186, 132.818182], [36.276961, 132.694805], [36.400735, 132.448052], [36.648284, 132.201299], [36.895833, 131.954545], [36.895833, 131.707792], [36.895833, 131.461039], [36.895833, 131.214286], [36.895833, 130.967532], [36.895833, 130.720779], [36.895833, 130.474026], [36.813317, 130.227273], [36.813317, 129.980519], [36.730801, 129.733766], [36.648284, 129.487013], [36.648284, 129.24026], [36.648284, 128.993506], [36.648284, 128.746753], [36.52451, 128.5], [36.400735, 128.253247], [36.276961, 128.006494], [36.153186, 127.75974], [36.029412, 127.512987], [35.905637, 127.266234], [35.781863, 127.019481], [35.658088, 126.896104], [35.575572, 126.772727], [35.410539, 126.525974], [35.245507, 126.279221], [35.16299, 126.032468], [34.915441, 125.785714], [34.750408, 125.538961], [34.667892, 125.415584], [34.585376, 125.292208], [34.420343, 125.045455], [34.172794, 124.798701], [34.04902, 124.551948], [33.925245, 124.428571], [33.842729, 124.305195], [33.677696, 124.140693], [33.59518, 124.058442], [33.430147, 123.893939], [33.347631, 123.811688], [33.182598, 123.647186], [33.120711, 123.564935], [32.935049, 123.37987], [32.873162, 123.318182], [32.6875, 123.133117], [32.604984, 123.071429], [32.439951, 122.906926], [32.357435, 122.824675], [32.192402, 122.660173], [32.109886, 122.577922], [31.944853, 122.41342], [31.821078, 122.331169], [31.697304, 122.248918], [31.532271, 122.084416], [31.449755, 122.002165], [31.202206, 121.837662], [30.954657, 121.652597], [30.872141, 121.590909], [30.707108, 121.467532], [30.459559, 121.344156], [30.21201, 121.196104], [29.964461, 121.097403], [29.716912, 120.974026], [29.551879, 120.850649], [29.469363, 120.801299], [29.221814, 120.727273], [28.974265, 120.603896], [28.726716, 120.542208], [28.479167, 120.455844], [28.231618, 120.406494], [27.984069, 120.357143], [27.73652, 120.316017], [27.488971, 120.274892], [27.241422, 120.233766], [26.993873, 120.192641], [26.746324, 120.15974], [26.498775, 120.15974], [26.251225, 120.15974], [26.003676, 120.151515], [25.756127, 120.233766], [25.508578, 120.209091], [25.261029, 120.209091], [25.01348, 120.209091], [24.765931, 120.258442], [24.518382, 120.274892], [24.270833, 120.307792], [24.147059, 120.357143], [24.023284, 120.392393], [23.775735, 120.406494], [23.528186, 120.505195], [23.280637, 120.554545], [23.156863, 120.603896], [23.033088, 120.653247], [22.785539, 120.727273], [22.53799, 120.850649], [22.290441, 120.912338], [22.042892, 121.035714], [21.919118, 121.097403], [21.795343, 121.159091], [21.547794, 121.282468], [21.42402, 121.344156], [21.300245, 121.405844], [21.052696, 121.590909], [20.805147, 121.775974], [20.722631, 121.837662], [20.557598, 121.936364], [20.371936, 122.084416], [20.310049, 122.133766], [20.11201, 122.331169], [20.0625, 122.372294], [19.814951, 122.577922], [19.567402, 122.824675], [19.319853, 123.071429], [19.072304, 123.318182], [18.866013, 123.564935], [18.824755, 123.606061], [18.647934, 123.811688], [18.577206, 123.91039], [18.471113, 124.058442], [18.329657, 124.255844], [18.294293, 124.305195], [18.143995, 124.551948], [18.082108, 124.650649], [17.976015, 124.798701], [17.834559, 125.045455], [17.693102, 125.292208], [17.58701, 125.44026], [17.525123, 125.538961], [17.374825, 125.785714], [17.339461, 125.847403], [17.256944, 126.032468], [17.116667, 126.279221], [17.091912, 126.340909], [17.009395, 126.525974], [16.885621, 126.772727], [16.844363, 126.854978], [16.745343, 127.019481], [16.596814, 127.266234], [16.406391, 127.512987], [16.349265, 127.595238], [16.235011, 127.75974], [16.101716, 127.951659], [16.060458, 128.006494], [15.907213, 128.253247], [15.854167, 128.335498], [15.748074, 128.5], [15.622089, 128.746753], [15.606618, 128.777597], [15.491095, 128.993506], [15.386574, 129.24026], [15.359069, 129.310761], [15.270658, 129.487013], [15.166531, 129.733766], [15.11152, 129.898268], [15.076155, 129.980519], [14.972273, 130.227273], [14.89626, 130.474026], [14.863971, 130.566558], [14.786612, 130.720779], [14.695187, 130.967532], [14.625263, 131.214286], [14.616422, 131.241703], [14.51219, 131.461039], [14.438186, 131.707792], [14.377714, 131.954545], [14.368873, 131.995671], [14.300109, 132.201299], [14.218191, 132.448052], [14.187971, 132.694805], [14.192052, 132.941558], [14.206419, 133.188312], [14.183211, 133.435065], [14.162017, 133.681818], [14.133548, 133.928571], [14.121324, 133.948312], [13.946135, 134.175325]],
-                {"bubblingMouseEvents": true, "color": "purple", "dashArray": null, "dashOffset": null, "fill": true, "fillColor": "purple", "fillOpacity": 0.06, "fillRule": "evenodd", "lineCap": "round", "lineJoin": "round", "noClip": false, "opacity": 0.35, "smoothFactor": 1.0, "stroke": true, "weight": 1}
-            ).addTo(feature_group_d1a2e4fa8732487f2b9a89c9f081f426);
-        
-    
-        var popup_ab99d91b4f938fac5005ee3117cf02c2 = L.popup({
-  "maxWidth": 300,
-});
-
-        
-            
-                var html_da7c476ea8a56c09ba584d1162ef72bb = $(`<div id="html_da7c476ea8a56c09ba584d1162ef72bb" style="width: 100.0%; height: 100.0%;"><b>侵襲機率：40%</b><br></div>`)[0];
-                popup_ab99d91b4f938fac5005ee3117cf02c2.setContent(html_da7c476ea8a56c09ba584d1162ef72bb);
-            
-        
-
-        polygon_a66a2d61997caa1002005dac318fea0d.bindPopup(popup_ab99d91b4f938fac5005ee3117cf02c2)
-        ;
-
-        
-    
-    
-            polygon_a66a2d61997caa1002005dac318fea0d.bindTooltip(
-                `<div>
-                     <b>暴風圈侵襲機率：40%</b>
-                 </div>`,
-                {
-  "sticky": true,
-}
-            );
-        
-    
-            var polygon_c28f36341c69f7e856fde60de5d32c07 = L.polygon(
-                [[14.085959, 132.448052], [14.038807, 132.694805], [14.059436, 132.941558], [14.121324, 133.106061], [14.129059, 133.188312], [14.131638, 133.435065], [14.128106, 133.681818], [14.121324, 133.743506], [14.022304, 133.928571], [13.908051, 134.175325], [13.897476, 134.422078], [13.899832, 134.668831], [13.899832, 134.915584], [13.899832, 135.162338], [13.899832, 135.409091], [13.899832, 135.655844], [13.899832, 135.902597], [13.899832, 136.149351], [13.931344, 136.396104], [14.121324, 136.585473], [14.178893, 136.642857], [14.368873, 136.832226], [14.426442, 136.88961], [14.616422, 137.078979], [14.673991, 137.136364], [14.863971, 137.325732], [14.92154, 137.383117], [15.11152, 137.572486], [15.359069, 137.575036], [15.416638, 137.62987], [15.606618, 137.819239], [15.854167, 137.821789], [16.101716, 137.821789], [16.349265, 137.821789], [16.596814, 137.821789], [16.798307, 137.62987], [16.844363, 137.595238], [17.091912, 137.575036], [17.293405, 137.383117], [17.339461, 137.348485], [17.552266, 137.136364], [17.58701, 137.101732], [17.834559, 137.092496], [18.029438, 136.88961], [18.064837, 136.642857], [18.082108, 136.616883], [18.29978, 136.396104], [18.329657, 136.356848], [18.528772, 136.149351], [18.559093, 135.902597], [18.577206, 135.810065], [18.714733, 135.655844], [18.801179, 135.409091], [18.824755, 135.31039], [18.959782, 135.162338], [19.072304, 134.95671], [19.107668, 134.915584], [19.300811, 134.668831], [19.319853, 134.637987], [19.493137, 134.422078], [19.567402, 134.237013], [19.60866, 134.175325], [19.757824, 133.928571], [19.814951, 133.780519], [19.885679, 133.681818], [20.024416, 133.435065], [20.0625, 133.336364], [20.155331, 133.188312], [20.28942, 132.941558], [20.310049, 132.892208], [20.433824, 132.694805], [20.557598, 132.448052], [20.750136, 132.201299], [20.805147, 132.102597], [20.928922, 131.954545], [21.052696, 131.806494], [21.135212, 131.707792], [21.300245, 131.54329], [21.382761, 131.461039], [21.547794, 131.296537], [21.646814, 131.214286], [21.795343, 131.066234], [21.894363, 130.967532], [22.042892, 130.844156], [22.191422, 130.720779], [22.290441, 130.638528], [22.455474, 130.474026], [22.53799, 130.403525], [22.744281, 130.227273], [22.785539, 130.186147], [23.033088, 129.980519], [23.280637, 129.795455], [23.404412, 129.733766], [23.528186, 129.684416], [23.775735, 129.585714], [24.023284, 129.487013], [24.270833, 129.425325], [24.518382, 129.404762], [24.765931, 129.363636], [25.01348, 129.404762], [25.261029, 129.487013], [25.508578, 129.487013], [25.756127, 129.569264], [26.003676, 129.733766], [26.251225, 129.816017], [26.498775, 129.980519], [26.746324, 130.062771], [26.993873, 130.227273], [27.241422, 130.391775], [27.365196, 130.474026], [27.488971, 130.597403], [27.612745, 130.720779], [27.73652, 130.844156], [27.860294, 130.967532], [27.984069, 131.090909], [28.231618, 131.214286], [28.355392, 131.461039], [28.479167, 131.584416], [28.726716, 131.707792], [28.974265, 131.954545], [29.221814, 132.201299], [29.469363, 132.324675], [29.593137, 132.448052], [29.716912, 132.571429], [29.840686, 132.694805], [29.964461, 132.818182], [30.21201, 132.941558], [30.459559, 133.188312], [30.707108, 133.435065], [30.954657, 133.681818], [31.202206, 133.681818], [31.449755, 133.928571], [31.697304, 134.051948], [31.944853, 134.175325], [32.192402, 134.298701], [32.439951, 134.422078], [32.6875, 134.422078], [32.935049, 134.668831], [33.182598, 134.668831], [33.430147, 134.792208], [33.677696, 134.915584], [33.925245, 134.915584], [34.172794, 134.915584], [34.420343, 134.915584], [34.667892, 134.915584], [34.915441, 134.915584], [35.16299, 134.915584], [35.410539, 135.038961], [35.658088, 134.915584], [35.905637, 134.915584], [36.153186, 134.915584], [36.400735, 134.792208], [36.648284, 134.668831], [36.895833, 134.422078], [37.143382, 134.422078], [37.390931, 134.175325], [37.63848, 133.928571], [37.886029, 133.681818], [38.009804, 133.435065], [38.133578, 133.188312], [38.133578, 132.941558], [38.381127, 132.694805], [38.381127, 132.448052], [38.381127, 132.201299], [38.381127, 131.954545], [38.381127, 131.707792], [38.381127, 131.461039], [38.504902, 131.214286], [38.463644, 130.967532], [38.381127, 130.720779], [38.381127, 130.474026], [38.381127, 130.227273], [38.257353, 129.980519], [38.216095, 129.733766], [38.133578, 129.61039], [38.051062, 129.487013], [38.009804, 129.24026], [37.886029, 129.116883], [37.803513, 128.993506], [37.762255, 128.746753], [37.63848, 128.5], [37.514706, 128.253247], [37.390931, 128.006494], [37.143382, 127.75974], [37.143382, 127.512987], [36.895833, 127.266234], [36.772059, 127.019481], [36.648284, 126.772727], [36.400735, 126.525974], [36.276961, 126.279221], [36.153186, 126.032468], [35.988154, 125.785714], [35.905637, 125.703463], [35.740605, 125.538961], [35.658088, 125.415584], [35.534314, 125.292208], [35.410539, 125.168831], [35.328023, 125.045455], [35.16299, 124.798701], [34.915441, 124.551948], [34.667892, 124.305195], [34.544118, 124.058442], [34.420343, 123.935065], [34.296569, 123.811688], [34.172794, 123.688312], [34.04902, 123.564935], [33.925245, 123.441558], [33.842729, 123.318182], [33.677696, 123.071429], [33.430147, 122.824675], [33.182598, 122.577922], [32.935049, 122.331169], [32.811275, 122.084416], [32.6875, 121.961039], [32.439951, 121.837662], [32.192402, 121.590909], [31.944853, 121.344156], [31.697304, 121.220779], [31.573529, 121.097403], [31.449755, 121.015152], [31.202206, 120.850649], [30.954657, 120.686147], [30.707108, 120.603896], [30.459559, 120.480519], [30.21201, 120.357143], [29.964461, 120.233766], [29.716912, 120.11039], [29.469363, 120.11039], [29.221814, 119.987013], [28.974265, 119.945887], [28.726716, 119.863636], [28.479167, 119.74026], [28.231618, 119.699134], [27.984069, 119.616883], [27.73652, 119.616883], [27.488971, 119.616883], [27.241422, 119.493506], [26.993873, 119.493506], [26.746324, 119.493506], [26.498775, 119.493506], [26.251225, 119.493506], [26.003676, 119.493506], [25.756127, 119.534632], [25.508578, 119.534632], [25.261029, 119.534632], [25.01348, 119.534632], [24.765931, 119.616883], [24.518382, 119.616883], [24.270833, 119.616883], [24.023284, 119.616883], [23.775735, 119.74026], [23.528186, 119.781385], [23.280637, 119.863636], [23.033088, 119.945887], [22.785539, 120.028139], [22.53799, 120.11039], [22.290441, 120.192641], [22.042892, 120.274892], [21.919118, 120.357143], [21.795343, 120.418831], [21.547794, 120.521645], [21.465278, 120.603896], [21.300245, 120.702597], [21.052696, 120.850649], [20.805147, 121.035714], [20.722631, 121.097403], [20.557598, 121.261905], [20.433824, 121.344156], [20.310049, 121.426407], [20.145016, 121.590909], [20.0625, 121.67316], [19.897467, 121.837662], [19.814951, 121.919913], [19.649918, 122.084416], [19.567402, 122.166667], [19.402369, 122.331169], [19.319853, 122.41342], [19.196078, 122.577922], [19.072304, 122.742424], [18.989788, 122.824675], [18.824755, 122.989177], [18.742239, 123.071429], [18.577206, 123.235931], [18.527696, 123.318182], [18.329657, 123.564935], [18.205882, 123.811688], [18.082108, 123.935065], [17.983088, 124.058442], [17.834559, 124.305195], [17.710784, 124.551948], [17.58701, 124.737013], [17.545752, 124.798701], [17.421977, 125.045455], [17.339461, 125.209957], [17.289951, 125.292208], [17.174428, 125.538961], [17.091912, 125.703463], [17.042402, 125.785714], [16.926879, 126.032468], [16.844363, 126.19697], [16.803105, 126.279221], [16.702906, 126.525974], [16.596814, 126.772727], [16.455357, 127.019481], [16.349265, 127.204545], [16.313901, 127.266234], [16.17598, 127.512987], [16.101716, 127.636364], [16.008885, 127.75974], [15.854167, 128.006494], [15.680882, 128.253247], [15.606618, 128.401299], [15.535889, 128.5], [15.404078, 128.746753], [15.359069, 128.87013], [15.28834, 128.993506], [15.179033, 129.24026], [15.11152, 129.425325], [15.080576, 129.487013], [14.96299, 129.733766], [14.899335, 129.980519], [14.863971, 130.079221], [14.789706, 130.227273], [14.706439, 130.474026], [14.631893, 130.720779], [14.616422, 130.782468], [14.533905, 130.967532], [14.445041, 131.214286], [14.381901, 131.461039], [14.368873, 131.522727], [14.276042, 131.707792], [14.197492, 131.954545], [14.162582, 132.201299], [14.121324, 132.386364], [14.085959, 132.448052]],
-                {"bubblingMouseEvents": true, "color": "purple", "dashArray": null, "dashOffset": null, "fill": true, "fillColor": "purple", "fillOpacity": 0.03, "fillRule": "evenodd", "lineCap": "round", "lineJoin": "round", "noClip": false, "opacity": 0.35, "smoothFactor": 1.0, "stroke": true, "weight": 1}
-            ).addTo(feature_group_d1a2e4fa8732487f2b9a89c9f081f426);
-        
-    
-        var popup_d8a2b08860c11a21826615122f12a0fe = L.popup({
-  "maxWidth": 300,
-});
-
-        
-            
-                var html_157e64b9a0b174989d918ad88bee4b72 = $(`<div id="html_157e64b9a0b174989d918ad88bee4b72" style="width: 100.0%; height: 100.0%;"><b>侵襲機率：20%</b><br></div>`)[0];
-                popup_d8a2b08860c11a21826615122f12a0fe.setContent(html_157e64b9a0b174989d918ad88bee4b72);
-            
-        
-
-        polygon_c28f36341c69f7e856fde60de5d32c07.bindPopup(popup_d8a2b08860c11a21826615122f12a0fe)
-        ;
-
-        
-    
-    
-            polygon_c28f36341c69f7e856fde60de5d32c07.bindTooltip(
-                `<div>
-                     <b>暴風圈侵襲機率：20%</b>
-                 </div>`,
-                {
-  "sticky": true,
-}
-            );
-        
-    
-            feature_group_d1a2e4fa8732487f2b9a89c9f081f426.addTo(map_218e4b5e0c6f850f457d20905e182aed);
-        
-    
-            var feature_group_e0961c1a6d0b0ceabd71fcd7377a6f7e = L.featureGroup(
-                {
-}
-            );
-        
-    
-            var poly_line_823f2bd869d6bc62218ffe0d7e7cd06e = L.polyline(
-                [[9.5, 160.3], [8.8, 161.1], [9.6, 161.5], [10.4, 160.4], [10.8, 159.5], [11.0, 158.6], [10.8, 157.1], [11.2, 156.1], [11.3, 154.6], [11.2, 152.8], [11.5, 151.4], [11.9, 150.2], [12.3, 148.5], [12.5, 147.2], [12.7, 146.1], [13.1, 144.8], [13.0, 143.6], [13.2, 142.4], [13.6, 141.5], [13.7, 140.3], [14.0, 139.2], [14.3, 138.4], [14.9, 137.5], [15.4, 136.6], [16.0, 135.6]],
-                {"bubblingMouseEvents": true, "color": "#d9534f", "dashArray": "6, 6", "dashOffset": null, "fill": false, "fillColor": "#d9534f", "fillOpacity": 0.2, "fillRule": "evenodd", "lineCap": "round", "lineJoin": "round", "noClip": false, "opacity": 0.9, "smoothFactor": 1.0, "stroke": true, "weight": 3.5}
-            ).addTo(feature_group_e0961c1a6d0b0ceabd71fcd7377a6f7e);
-        
-    
-        var popup_d4265eb2089a8555bcc9597d4ba2b3f0 = L.popup({
-  "maxWidth": 300,
-});
-
-        
-            
-                var html_070f1579ea99f92610210f8a3214540a = $(`<div id="html_070f1579ea99f92610210f8a3214540a" style="width: 100.0%; height: 100.0%;"><b>過去路徑</b><br></div>`)[0];
-                popup_d4265eb2089a8555bcc9597d4ba2b3f0.setContent(html_070f1579ea99f92610210f8a3214540a);
-            
-        
-
-        poly_line_823f2bd869d6bc62218ffe0d7e7cd06e.bindPopup(popup_d4265eb2089a8555bcc9597d4ba2b3f0)
-        ;
-
-        
-    
-    
-            poly_line_823f2bd869d6bc62218ffe0d7e7cd06e.bindTooltip(
-                `<div>
-                     <b>🌀 颱風歷史路徑 (過去移動軌跡)</b>
-                 </div>`,
-                {
-  "sticky": true,
-}
-            );
-        
-    
-            var polygon_1fa470cc2d4666098391cc83b055cd2c = L.polygon(
-                [[16.0, 135.6], [16.05, 135.13], [16.05, 135.11], [16.05, 135.11], [16.1, 134.66], [16.1, 134.63], [16.1, 134.62], [16.14, 134.2], [16.14, 134.2], [16.14, 134.13], [16.16, 134.07], [16.16, 134.07], [16.25, 133.7], [16.26, 133.7], [16.26, 133.66], [16.36, 133.27], [16.36, 133.26], [16.37, 133.23], [16.45, 132.83], [16.48, 132.47], [16.48, 132.46], [16.48, 132.36], [16.49, 132.36], [16.51, 132.03], [16.51, 132.02], [16.52, 131.91], [16.53, 131.89], [16.58, 131.52], [16.59, 131.47], [16.62, 131.34], [16.64, 131.3], [16.79, 130.93], [16.79, 130.92], [16.85, 130.79], [16.86, 130.78], [17.04, 130.41], [17.06, 130.38], [17.08, 130.35], [17.29, 129.99], [17.3, 129.98], [17.34, 129.92], [17.33, 129.92], [17.6, 129.51], [17.6, 129.51], [17.62, 129.49], [17.62, 129.49], [17.64, 129.45], [17.65, 129.44], [17.65, 129.44], [17.9, 129.09], [17.9, 129.09], [17.91, 129.08], [17.91, 129.08], [17.92, 129.06], [17.93, 129.04], [17.93, 129.04], [18.19, 128.68], [18.21, 128.66], [18.22, 128.64], [18.22, 128.64], [18.47, 128.29], [18.73, 127.91], [18.94, 127.58], [18.94, 127.58], [18.94, 127.57], [19.09, 127.24], [19.27, 126.84], [19.27, 126.84], [19.28, 126.82], [19.28, 126.82], [19.3, 126.77], [19.31, 126.74], [19.31, 126.74], [19.46, 126.41], [19.46, 126.41], [19.5, 126.33], [19.51, 126.3], [19.68, 125.97], [19.7, 125.93], [19.72, 125.9], [19.9, 125.57], [19.92, 125.52], [19.98, 125.43], [19.97, 125.43], [20.22, 125.04], [20.22, 125.04], [20.3, 124.91], [20.32, 124.9], [20.56, 124.57], [20.58, 124.54], [20.65, 124.47], [20.64, 124.47], [20.88, 124.19], [20.88, 124.19], [20.88, 124.19], [20.95, 124.12], [20.95, 124.12], [21.04, 124.02], [21.04, 124.02], [21.37, 123.69], [21.37, 123.69], [21.43, 123.63], [21.48, 123.59], [21.48, 123.59], [21.8, 123.32], [22.11, 123.02], [22.12, 123.01], [22.24, 122.92], [22.24, 122.91], [22.6, 122.61], [22.6, 122.62], [22.73, 122.52], [22.73, 122.52], [23.1, 122.25], [23.1, 122.26], [23.17, 122.2], [23.24, 122.17], [23.24, 122.16], [23.63, 121.92], [23.63, 121.93], [23.78, 121.85], [23.78, 121.84], [24.18, 121.62], [24.18, 121.64], [24.35, 121.55], [24.35, 121.54], [24.76, 121.36], [24.76, 121.36], [24.8, 121.35], [24.97, 121.3], [24.97, 121.28], [25.38, 121.13], [25.38, 121.15], [25.64, 121.07], [25.64, 121.06], [26.05, 120.95], [26.05, 120.96], [26.14, 120.94], [26.7, 120.88], [27.26, 120.94], [27.29, 120.95], [27.29, 120.94], [27.73, 121.03], [27.73, 121.04], [28.02, 121.12], [28.02, 121.11], [28.45, 121.24], [28.44, 121.26], [28.67, 121.33], [28.69, 121.34], [28.69, 121.33], [29.1, 121.51], [29.1, 121.52], [29.28, 121.61], [29.29, 121.6], [29.69, 121.8], [29.69, 121.82], [29.84, 121.9], [29.85, 121.89], [30.24, 122.12], [30.23, 122.13], [30.35, 122.2], [30.36, 122.19], [30.74, 122.44], [30.74, 122.45], [30.78, 122.47], [30.83, 122.51], [30.83, 122.5], [31.22, 122.77], [31.21, 122.78], [31.27, 122.83], [31.28, 122.82], [31.66, 123.1], [31.65, 123.12], [31.7, 123.15], [31.71, 123.14], [32.08, 123.43], [32.07, 123.44], [32.1, 123.47], [32.11, 123.46], [32.47, 123.75], [32.46, 123.77], [32.48, 123.78], [32.49, 123.77], [32.85, 124.07], [32.84, 124.08], [32.85, 124.08], [32.86, 124.07], [33.22, 124.37], [33.22, 124.37], [33.56, 124.65], [33.56, 124.65], [33.89, 124.92], [33.88, 124.94], [34.18, 125.18], [34.63, 125.72], [35.0, 126.34], [35.27, 127.02], [35.44, 127.75], [35.5, 128.5], [35.44, 129.25], [35.27, 129.98], [35.0, 130.66], [34.63, 131.28], [34.18, 131.82], [33.65, 132.25], [33.06, 132.57], [32.44, 132.76], [31.8, 132.83], [31.16, 132.76], [30.54, 132.57], [29.95, 132.25], [29.42, 131.82], [29.14, 131.49], [29.13, 131.5], [28.82, 131.12], [28.83, 131.11], [28.83, 131.11], [28.82, 131.12], [28.51, 130.75], [28.51, 130.75], [28.21, 130.39], [28.21, 130.39], [27.91, 130.04], [27.91, 130.04], [27.63, 129.71], [27.63, 129.71], [27.35, 129.4], [27.35, 129.4], [27.08, 129.1], [26.81, 128.83], [26.55, 128.58], [26.32, 128.37], [26.1, 128.2], [25.92, 128.07], [25.77, 127.99], [25.49, 127.86], [25.49, 127.85], [25.08, 127.63], [24.99, 127.57], [24.99, 127.58], [24.7, 127.37], [24.57, 127.29], [24.38, 127.21], [24.15, 127.12], [23.88, 127.05], [23.6, 127.0], [23.31, 126.96], [23.15, 126.96], [22.98, 126.99], [22.68, 127.08], [22.38, 127.2], [22.09, 127.34], [21.8, 127.5], [21.58, 127.66], [21.37, 127.87], [21.1, 128.17], [20.86, 128.44], [20.86, 128.44], [20.85, 128.45], [20.82, 128.49], [20.82, 128.49], [20.81, 128.5], [20.81, 128.5], [20.53, 128.81], [20.26, 129.14], [20.25, 129.15], [20.24, 129.16], [20.24, 129.17], [20.24, 129.17], [20.21, 129.19], [20.21, 129.2], [19.89, 129.55], [19.89, 129.55], [19.87, 129.57], [19.88, 129.57], [19.55, 129.92], [19.55, 129.92], [19.54, 129.92], [19.55, 129.92], [19.22, 130.27], [18.91, 130.61], [18.63, 130.94], [18.62, 130.95], [18.61, 130.96], [18.35, 131.28], [18.13, 131.61], [17.94, 131.96], [17.93, 131.98], [17.91, 132.01], [17.91, 132.01], [17.7, 132.35], [17.69, 132.35], [17.68, 132.37], [17.5, 132.72], [17.49, 132.74], [17.48, 132.75], [17.31, 133.09], [17.18, 133.47], [17.17, 133.49], [17.16, 133.51], [17.01, 133.9], [17.01, 133.91], [17.0, 133.93], [16.84, 134.32], [16.84, 134.33], [16.81, 134.39], [16.8, 134.41], [16.8, 134.41], [16.55, 134.79], [16.55, 134.79], [16.55, 134.8], [16.54, 134.81], [16.54, 134.81], [16.54, 134.81], [16.54, 134.81], [16.27, 135.21], [16.27, 135.21], [16.27, 135.21], [16.27, 135.21], [16.0, 135.6]],
-                {"bubblingMouseEvents": true, "color": "#d9534f", "dashArray": null, "dashOffset": null, "fill": true, "fillColor": "#f0ad4e", "fillOpacity": 0.12, "fillRule": "evenodd", "lineCap": "round", "lineJoin": "round", "noClip": false, "opacity": 0.6, "smoothFactor": 1.0, "stroke": true, "weight": 1.5}
-            ).addTo(feature_group_e0961c1a6d0b0ceabd71fcd7377a6f7e);
-        
-    
-        var popup_4044b5a1a0ad60b5b1668a11f67cece4 = L.popup({
-  "maxWidth": 300,
-});
-
-        
-            
-                var html_a13d42f6f35007a5de78de5d515fb333 = $(`<div id="html_a13d42f6f35007a5de78de5d515fb333" style="width: 100.0%; height: 100.0%;"><b>路徑潛勢預測</b><br></div>`)[0];
-                popup_4044b5a1a0ad60b5b1668a11f67cece4.setContent(html_a13d42f6f35007a5de78de5d515fb333);
-            
-        
-
-        polygon_1fa470cc2d4666098391cc83b055cd2c.bindPopup(popup_4044b5a1a0ad60b5b1668a11f67cece4)
-        ;
-
-        
-    
-    
-            polygon_1fa470cc2d4666098391cc83b055cd2c.bindTooltip(
-                `<div>
-                     <b>路徑潛勢預測</b>
-                 </div>`,
-                {
-  "sticky": true,
-}
-            );
-        
-    
-            var poly_line_5e93635ac8345acca9cb556ec5e67e6a = L.polyline(
-                [[16.0, 135.6], [16.17, 135.14], [16.34, 134.67], [16.5, 134.2], [16.64, 133.77], [16.77, 133.34], [16.9, 132.9], [17.02, 132.46], [17.15, 132.02], [17.3, 131.6], [17.5, 131.18], [17.74, 130.78], [18.0, 130.4], [18.29, 130.01], [18.6, 129.63], [18.91, 129.25], [19.22, 128.88], [19.52, 128.49], [19.8, 128.1], [20.05, 127.72], [20.29, 127.34], [20.53, 126.96], [20.8, 126.6], [21.1, 126.25], [21.43, 125.92], [21.79, 125.63], [22.17, 125.35], [22.58, 125.11], [23.0, 124.9], [23.44, 124.72], [23.9, 124.58], [24.37, 124.48], [24.85, 124.4], [25.32, 124.37], [25.79, 124.37], [26.25, 124.41], [26.7, 124.5], [27.13, 124.64], [27.54, 124.82], [27.93, 125.04], [28.32, 125.29], [28.69, 125.57], [29.06, 125.86], [29.42, 126.17], [29.77, 126.49], [30.12, 126.82], [30.46, 127.16], [30.8, 127.5], [31.14, 127.83], [31.47, 128.17], [31.8, 128.5]],
-                {"bubblingMouseEvents": true, "color": "#d9534f", "dashArray": null, "dashOffset": null, "fill": false, "fillColor": "#d9534f", "fillOpacity": 0.2, "fillRule": "evenodd", "lineCap": "round", "lineJoin": "round", "noClip": false, "opacity": 0.85, "smoothFactor": 1.0, "stroke": true, "weight": 3}
-            ).addTo(feature_group_e0961c1a6d0b0ceabd71fcd7377a6f7e);
-        
-    
-        var popup_b5a97029e02be7eddd89d0bc10666ea0 = L.popup({
-  "maxWidth": 300,
-});
-
-        
-            
-                var html_cc205c068925b147a3e877f547eb1a62 = $(`<div id="html_cc205c068925b147a3e877f547eb1a62" style="width: 100.0%; height: 100.0%;"><b>颱風路徑預測</b><br></div>`)[0];
-                popup_b5a97029e02be7eddd89d0bc10666ea0.setContent(html_cc205c068925b147a3e877f547eb1a62);
-            
-        
-
-        poly_line_5e93635ac8345acca9cb556ec5e67e6a.bindPopup(popup_b5a97029e02be7eddd89d0bc10666ea0)
-        ;
-
-        
-    
-    
-            poly_line_5e93635ac8345acca9cb556ec5e67e6a.bindTooltip(
-                `<div>
-                     <b>颱風路徑預測</b>
-                 </div>`,
-                {
-  "sticky": true,
-}
-            );
-        
-    
-            var circle_marker_272db69edbe3b10c757d5f1ce7ea979b = L.circleMarker(
-                [16.5, 134.2],
-                {"bubblingMouseEvents": true, "color": "#d9534f", "dashArray": null, "dashOffset": null, "fill": true, "fillColor": "#d9534f", "fillOpacity": 0.9, "fillRule": "evenodd", "lineCap": "round", "lineJoin": "round", "opacity": 1.0, "radius": 4, "stroke": true, "weight": 3}
-            ).addTo(feature_group_e0961c1a6d0b0ceabd71fcd7377a6f7e);
-        
-    
-        var popup_77ea420cdbd33c571bc8b2affe4b68b7 = L.popup({
-  "maxWidth": 300,
-});
-
-        
-            
-                var html_7a66c8eca2ac804d7db5863b4554d302 = $(`<div id="html_7a66c8eca2ac804d7db5863b4554d302" style="width: 100.0%; height: 100.0%;"><b>10月20日14時</b><br><b>中心位置：北緯 16.5°, 東經 134.2°</b><br>10月20日14時</div>`)[0];
-                popup_77ea420cdbd33c571bc8b2affe4b68b7.setContent(html_7a66c8eca2ac804d7db5863b4554d302);
-            
-        
-
-        circle_marker_272db69edbe3b10c757d5f1ce7ea979b.bindPopup(popup_77ea420cdbd33c571bc8b2affe4b68b7)
-        ;
-
-        
-    
-    
-            circle_marker_272db69edbe3b10c757d5f1ce7ea979b.bindTooltip(
-                `<div>
-                     10月20日14時 (中心位置：北緯 16.5°, 東經 134.2°)
-                 </div>`,
-                {
-  "sticky": true,
-}
-            );
-        
-    
-            var circle_marker_bc2a38d5527bd50e236ba655cb7a86ce = L.circleMarker(
-                [16.9, 132.9],
-                {"bubblingMouseEvents": true, "color": "#d9534f", "dashArray": null, "dashOffset": null, "fill": true, "fillColor": "#d9534f", "fillOpacity": 0.9, "fillRule": "evenodd", "lineCap": "round", "lineJoin": "round", "opacity": 1.0, "radius": 4, "stroke": true, "weight": 3}
-            ).addTo(feature_group_e0961c1a6d0b0ceabd71fcd7377a6f7e);
-        
-    
-        var popup_a1eaa0496a03e377ca2548dd4cf89330 = L.popup({
-  "maxWidth": 300,
-});
-
-        
-            
-                var html_52ac5e66349185c1e7d9414f51adff56 = $(`<div id="html_52ac5e66349185c1e7d9414f51adff56" style="width: 100.0%; height: 100.0%;"><b>10月20日20時</b><br><b>中心位置：北緯 16.9°, 東經 132.9°</b><br>10月20日20時</div>`)[0];
-                popup_a1eaa0496a03e377ca2548dd4cf89330.setContent(html_52ac5e66349185c1e7d9414f51adff56);
-            
-        
-
-        circle_marker_bc2a38d5527bd50e236ba655cb7a86ce.bindPopup(popup_a1eaa0496a03e377ca2548dd4cf89330)
-        ;
-
-        
-    
-    
-            circle_marker_bc2a38d5527bd50e236ba655cb7a86ce.bindTooltip(
-                `<div>
-                     10月20日20時 (中心位置：北緯 16.9°, 東經 132.9°)
-                 </div>`,
-                {
-  "sticky": true,
-}
-            );
-        
-    
-            var circle_marker_f5962985310690128649f6b06cc0d8e1 = L.circleMarker(
-                [17.3, 131.6],
-                {"bubblingMouseEvents": true, "color": "#d9534f", "dashArray": null, "dashOffset": null, "fill": true, "fillColor": "#d9534f", "fillOpacity": 0.9, "fillRule": "evenodd", "lineCap": "round", "lineJoin": "round", "opacity": 1.0, "radius": 4, "stroke": true, "weight": 3}
-            ).addTo(feature_group_e0961c1a6d0b0ceabd71fcd7377a6f7e);
-        
-    
-        var popup_28cd0d50c37ec272131ea7ceaa8129e6 = L.popup({
-  "maxWidth": 300,
-});
-
-        
-            
-                var html_e89423b3e544aed8884e29aedf122beb = $(`<div id="html_e89423b3e544aed8884e29aedf122beb" style="width: 100.0%; height: 100.0%;"><b>10月21日02時</b><br><b>中心位置：北緯 17.3°, 東經 131.6°</b><br>10月21日02時</div>`)[0];
-                popup_28cd0d50c37ec272131ea7ceaa8129e6.setContent(html_e89423b3e544aed8884e29aedf122beb);
-            
-        
-
-        circle_marker_f5962985310690128649f6b06cc0d8e1.bindPopup(popup_28cd0d50c37ec272131ea7ceaa8129e6)
-        ;
-
-        
-    
-    
-            circle_marker_f5962985310690128649f6b06cc0d8e1.bindTooltip(
-                `<div>
-                     10月21日02時 (中心位置：北緯 17.3°, 東經 131.6°)
-                 </div>`,
-                {
-  "sticky": true,
-}
-            );
-        
-    
-            var circle_marker_c45de287b59c37de14c9a523bcfe5578 = L.circleMarker(
-                [18.0, 130.4],
-                {"bubblingMouseEvents": true, "color": "#d9534f", "dashArray": null, "dashOffset": null, "fill": true, "fillColor": "#d9534f", "fillOpacity": 0.9, "fillRule": "evenodd", "lineCap": "round", "lineJoin": "round", "opacity": 1.0, "radius": 4, "stroke": true, "weight": 3}
-            ).addTo(feature_group_e0961c1a6d0b0ceabd71fcd7377a6f7e);
-        
-    
-        var popup_4a5ba4edde91c9b5b934b64fcabd13b6 = L.popup({
-  "maxWidth": 300,
-});
-
-        
-            
-                var html_bcb3ea77e24f38f163c0f60a3596fa8e = $(`<div id="html_bcb3ea77e24f38f163c0f60a3596fa8e" style="width: 100.0%; height: 100.0%;"><b>10月21日08時</b><br><b>中心位置：北緯 18.0°, 東經 130.4°</b><br>10月21日08時</div>`)[0];
-                popup_4a5ba4edde91c9b5b934b64fcabd13b6.setContent(html_bcb3ea77e24f38f163c0f60a3596fa8e);
-            
-        
-
-        circle_marker_c45de287b59c37de14c9a523bcfe5578.bindPopup(popup_4a5ba4edde91c9b5b934b64fcabd13b6)
-        ;
-
-        
-    
-    
-            circle_marker_c45de287b59c37de14c9a523bcfe5578.bindTooltip(
-                `<div>
-                     10月21日08時 (中心位置：北緯 18.0°, 東經 130.4°)
-                 </div>`,
-                {
-  "sticky": true,
-}
-            );
-        
-    
-            var circle_marker_f442ab5d5889c6efd82cfee9c4f639e9 = L.circleMarker(
-                [19.8, 128.1],
-                {"bubblingMouseEvents": true, "color": "#d9534f", "dashArray": null, "dashOffset": null, "fill": true, "fillColor": "#d9534f", "fillOpacity": 0.9, "fillRule": "evenodd", "lineCap": "round", "lineJoin": "round", "opacity": 1.0, "radius": 4, "stroke": true, "weight": 3}
-            ).addTo(feature_group_e0961c1a6d0b0ceabd71fcd7377a6f7e);
-        
-    
-        var popup_7edbeb343126027782e04f5dedc14665 = L.popup({
-  "maxWidth": 300,
-});
-
-        
-            
-                var html_ffda199a0b4c50c74809f7f1e038f05a = $(`<div id="html_ffda199a0b4c50c74809f7f1e038f05a" style="width: 100.0%; height: 100.0%;"><b>10月21日20時</b><br><b>中心位置：北緯 19.8°, 東經 128.1°</b><br>10月21日20時</div>`)[0];
-                popup_7edbeb343126027782e04f5dedc14665.setContent(html_ffda199a0b4c50c74809f7f1e038f05a);
-            
-        
-
-        circle_marker_f442ab5d5889c6efd82cfee9c4f639e9.bindPopup(popup_7edbeb343126027782e04f5dedc14665)
-        ;
-
-        
-    
-    
-            circle_marker_f442ab5d5889c6efd82cfee9c4f639e9.bindTooltip(
-                `<div>
-                     10月21日20時 (中心位置：北緯 19.8°, 東經 128.1°)
-                 </div>`,
-                {
-  "sticky": true,
-}
-            );
-        
-    
-            var circle_marker_1fd9e929afe8d14000a45b7dd0e1c01b = L.circleMarker(
-                [20.8, 126.6],
-                {"bubblingMouseEvents": true, "color": "#d9534f", "dashArray": null, "dashOffset": null, "fill": true, "fillColor": "#d9534f", "fillOpacity": 0.9, "fillRule": "evenodd", "lineCap": "round", "lineJoin": "round", "opacity": 1.0, "radius": 4, "stroke": true, "weight": 3}
-            ).addTo(feature_group_e0961c1a6d0b0ceabd71fcd7377a6f7e);
-        
-    
-        var popup_b0894e26fb2e2c57a2219fa985c104ea = L.popup({
-  "maxWidth": 300,
-});
-
-        
-            
-                var html_57323428db5695ac1836a7d213b7ca8b = $(`<div id="html_57323428db5695ac1836a7d213b7ca8b" style="width: 100.0%; height: 100.0%;"><b>10月22日08時</b><br><b>中心位置：北緯 20.8°, 東經 126.6°</b><br>10月22日08時</div>`)[0];
-                popup_b0894e26fb2e2c57a2219fa985c104ea.setContent(html_57323428db5695ac1836a7d213b7ca8b);
-            
-        
-
-        circle_marker_1fd9e929afe8d14000a45b7dd0e1c01b.bindPopup(popup_b0894e26fb2e2c57a2219fa985c104ea)
-        ;
-
-        
-    
-    
-            circle_marker_1fd9e929afe8d14000a45b7dd0e1c01b.bindTooltip(
-                `<div>
-                     10月22日08時 (中心位置：北緯 20.8°, 東經 126.6°)
-                 </div>`,
-                {
-  "sticky": true,
-}
-            );
-        
-    
-            var circle_marker_a7949bf1847fb2b7c3830b46e3710e7e = L.circleMarker(
-                [23.0, 124.9],
-                {"bubblingMouseEvents": true, "color": "#d9534f", "dashArray": null, "dashOffset": null, "fill": true, "fillColor": "#d9534f", "fillOpacity": 0.9, "fillRule": "evenodd", "lineCap": "round", "lineJoin": "round", "opacity": 1.0, "radius": 4, "stroke": true, "weight": 3}
-            ).addTo(feature_group_e0961c1a6d0b0ceabd71fcd7377a6f7e);
-        
-    
-        var popup_1e859e81f77b9969c5b5259ad2678e24 = L.popup({
-  "maxWidth": 300,
-});
-
-        
-            
-                var html_ee76b753bcb7a2a14680072574ee199f = $(`<div id="html_ee76b753bcb7a2a14680072574ee199f" style="width: 100.0%; height: 100.0%;"><b>10月23日08時</b><br><b>中心位置：北緯 23.0°, 東經 124.9°</b><br>10月23日08時</div>`)[0];
-                popup_1e859e81f77b9969c5b5259ad2678e24.setContent(html_ee76b753bcb7a2a14680072574ee199f);
-            
-        
-
-        circle_marker_a7949bf1847fb2b7c3830b46e3710e7e.bindPopup(popup_1e859e81f77b9969c5b5259ad2678e24)
-        ;
-
-        
-    
-    
-            circle_marker_a7949bf1847fb2b7c3830b46e3710e7e.bindTooltip(
-                `<div>
-                     10月23日08時 (中心位置：北緯 23.0°, 東經 124.9°)
-                 </div>`,
-                {
-  "sticky": true,
-}
-            );
-        
-    
-            var circle_marker_91c2c9ec3395b61dbef34296ff0e425e = L.circleMarker(
-                [26.7, 124.5],
-                {"bubblingMouseEvents": true, "color": "#d9534f", "dashArray": null, "dashOffset": null, "fill": true, "fillColor": "#d9534f", "fillOpacity": 0.9, "fillRule": "evenodd", "lineCap": "round", "lineJoin": "round", "opacity": 1.0, "radius": 4, "stroke": true, "weight": 3}
-            ).addTo(feature_group_e0961c1a6d0b0ceabd71fcd7377a6f7e);
-        
-    
-        var popup_6f876a143cb4b3ff1fd2f1304b0afb32 = L.popup({
-  "maxWidth": 300,
-});
-
-        
-            
-                var html_624cd29d77194eefbbe01d5b2903b7d6 = $(`<div id="html_624cd29d77194eefbbe01d5b2903b7d6" style="width: 100.0%; height: 100.0%;"><b>10月24日08時</b><br><b>中心位置：北緯 26.7°, 東經 124.5°</b><br>10月24日08時</div>`)[0];
-                popup_6f876a143cb4b3ff1fd2f1304b0afb32.setContent(html_624cd29d77194eefbbe01d5b2903b7d6);
-            
-        
-
-        circle_marker_91c2c9ec3395b61dbef34296ff0e425e.bindPopup(popup_6f876a143cb4b3ff1fd2f1304b0afb32)
-        ;
-
-        
-    
-    
-            circle_marker_91c2c9ec3395b61dbef34296ff0e425e.bindTooltip(
-                `<div>
-                     10月24日08時 (中心位置：北緯 26.7°, 東經 124.5°)
-                 </div>`,
-                {
-  "sticky": true,
-}
-            );
-        
-    
-            var circle_marker_3068dd311d10ecb5a1a5c97ba64ed2f7 = L.circleMarker(
-                [31.8, 128.5],
-                {"bubblingMouseEvents": true, "color": "#d9534f", "dashArray": null, "dashOffset": null, "fill": true, "fillColor": "#d9534f", "fillOpacity": 0.9, "fillRule": "evenodd", "lineCap": "round", "lineJoin": "round", "opacity": 1.0, "radius": 4, "stroke": true, "weight": 3}
-            ).addTo(feature_group_e0961c1a6d0b0ceabd71fcd7377a6f7e);
-        
-    
-        var popup_e705186948a804d03ba684c12d03f9c6 = L.popup({
-  "maxWidth": 300,
-});
-
-        
-            
-                var html_23d1eff1631bb91871ab00f593015675 = $(`<div id="html_23d1eff1631bb91871ab00f593015675" style="width: 100.0%; height: 100.0%;"><b>10月25日08時</b><br><b>中心位置：北緯 31.8°, 東經 128.5°</b><br>10月25日08時</div>`)[0];
-                popup_e705186948a804d03ba684c12d03f9c6.setContent(html_23d1eff1631bb91871ab00f593015675);
-            
-        
-
-        circle_marker_3068dd311d10ecb5a1a5c97ba64ed2f7.bindPopup(popup_e705186948a804d03ba684c12d03f9c6)
-        ;
-
-        
-    
-    
-            circle_marker_3068dd311d10ecb5a1a5c97ba64ed2f7.bindTooltip(
-                `<div>
-                     10月25日08時 (中心位置：北緯 31.8°, 東經 128.5°)
-                 </div>`,
-                {
-  "sticky": true,
-}
-            );
-        
-    
-            var polygon_052900449aaf38b73bb1e2c634c5072b = L.polygon(
-                [[16.0, 137.94], [16.39, 137.9], [16.77, 137.79], [17.13, 137.62], [17.45, 137.39], [17.73, 137.1], [17.96, 136.77], [18.12, 136.4], [18.22, 136.01], [18.26, 135.6], [18.22, 135.19], [18.12, 134.8], [17.96, 134.43], [17.73, 134.1], [17.45, 133.81], [17.13, 133.58], [16.77, 133.41], [16.39, 133.3], [16.0, 133.26], [15.61, 133.3], [15.23, 133.41], [14.87, 133.58], [14.55, 133.81], [14.27, 134.1], [14.04, 134.43], [13.88, 134.8], [13.78, 135.19], [13.74, 135.6], [13.78, 136.01], [13.88, 136.4], [14.04, 136.77], [14.27, 137.1], [14.55, 137.39], [14.87, 137.62], [15.23, 137.79], [15.61, 137.9], [16.0, 137.94]],
-                {"bubblingMouseEvents": true, "color": "#d9534f", "dashArray": null, "dashOffset": null, "fill": true, "fillColor": "#d9534f", "fillOpacity": 0.25, "fillRule": "evenodd", "lineCap": "round", "lineJoin": "round", "noClip": false, "opacity": 0.8, "smoothFactor": 1.0, "stroke": true, "weight": 2}
-            ).addTo(feature_group_e0961c1a6d0b0ceabd71fcd7377a6f7e);
-        
-    
-        var popup_db999cbfb460742739e2c37b786553e4 = L.popup({
-  "maxWidth": 300,
-});
-
-        
-            
-                var html_fad74ef5063d3efe46fdedc5a37683dc = $(`<div id="html_fad74ef5063d3efe46fdedc5a37683dc" style="width: 100.0%; height: 100.0%;"><b>7級風暴風圈</b><br></div>`)[0];
-                popup_db999cbfb460742739e2c37b786553e4.setContent(html_fad74ef5063d3efe46fdedc5a37683dc);
-            
-        
-
-        polygon_052900449aaf38b73bb1e2c634c5072b.bindPopup(popup_db999cbfb460742739e2c37b786553e4)
-        ;
-
-        
-    
-    
-            polygon_052900449aaf38b73bb1e2c634c5072b.bindTooltip(
-                `<div>
-                     <b>7級風暴風圈</b>
-                 </div>`,
-                {
-  "sticky": true,
-}
-            );
-        
-    
-            var circle_marker_c5a79ecbe7fdebc2f68a003d8d6569b5 = L.circleMarker(
-                [16.0, 135.6],
-                {"bubblingMouseEvents": true, "color": "#d9534f", "dashArray": null, "dashOffset": null, "fill": true, "fillColor": "#d9534f", "fillOpacity": 0.9, "fillRule": "evenodd", "lineCap": "round", "lineJoin": "round", "opacity": 1.0, "radius": 4, "stroke": true, "weight": 3}
-            ).addTo(feature_group_e0961c1a6d0b0ceabd71fcd7377a6f7e);
-        
-    
-        var popup_1dfc43cd5e599574ac4e215cc2675097 = L.popup({
-  "maxWidth": 300,
-});
-
-        
-            
-                var html_c4c57b42f29018b35d0af416136a01d6 = $(`<div id="html_c4c57b42f29018b35d0af416136a01d6" style="width: 100.0%; height: 100.0%;"><b>薔琵 - 10月20日08時</b><br><b>中心位置：北緯 16.0°, 東經 135.6°</b><br>強烈颱風 薔琵 (編號第 29 號，國際命名 CHAMPI)，中心位置位於北緯 16.00 度、東經 135.60 度，以每小時25公里速度，向西北西進行。颱風中心氣壓 910 百帕，近中心最大風速每秒 55 公尺，瞬間之最大陣風每秒 68 公尺，七級風半徑 250 公里，十級風半徑 120 公里。</div>`)[0];
-                popup_1dfc43cd5e599574ac4e215cc2675097.setContent(html_c4c57b42f29018b35d0af416136a01d6);
-            
-        
-
-        circle_marker_c5a79ecbe7fdebc2f68a003d8d6569b5.bindPopup(popup_1dfc43cd5e599574ac4e215cc2675097)
-        ;
-
-        
-    
-    
-            circle_marker_c5a79ecbe7fdebc2f68a003d8d6569b5.bindTooltip(
-                `<div>
-                     薔琵 - 10月20日08時 (中心位置：北緯 16.0°, 東經 135.6°)
-                 </div>`,
-                {
-  "sticky": true,
-}
-            );
-        
-    
-            var marker_cc3c6406b0c4b833242e9ab5a2abb227 = L.marker(
-                [27.8, 119.7],
-                {
-}
-            ).addTo(feature_group_e0961c1a6d0b0ceabd71fcd7377a6f7e);
-        
-    
-            var icon_ce7d63bbb940a323ce935b7d495b7b02 = L.AwesomeMarkers.icon(
-                {
-  "markerColor": "red",
-  "iconColor": "white",
-  "icon": "info-sign",
-  "prefix": "glyphicon",
-  "extraClasses": "fa-rotate-0",
-}
-            );
-        
-    
-        var popup_c1b5ef761b071371228f6d9598e22547 = L.popup({
-  "maxWidth": 300,
-});
-
-        
-            
-                var html_1a34e4dd1f57d384fdf4fcac67a7f76d = $(`<div id="html_1a34e4dd1f57d384fdf4fcac67a7f76d" style="width: 100.0%; height: 100.0%;"><b>沙德爾 最新中心位置</b><br>北緯 27.8°，東經 119.7°<br>中心氣壓：995 hPa</div>`)[0];
-                popup_c1b5ef761b071371228f6d9598e22547.setContent(html_1a34e4dd1f57d384fdf4fcac67a7f76d);
-            
-        
-
-        marker_cc3c6406b0c4b833242e9ab5a2abb227.bindPopup(popup_c1b5ef761b071371228f6d9598e22547)
-        ;
-
-        
-    
-    
-            marker_cc3c6406b0c4b833242e9ab5a2abb227.bindTooltip(
-                `<div>
-                     🌀 沙德爾 中心 (北緯 27.8°，東經 119.7°)
-                 </div>`,
-                {
-  "sticky": true,
-}
-            );
-        
-    
-                marker_cc3c6406b0c4b833242e9ab5a2abb227.setIcon(icon_ce7d63bbb940a323ce935b7d495b7b02);
-            
-    
-            feature_group_e0961c1a6d0b0ceabd71fcd7377a6f7e.addTo(map_218e4b5e0c6f850f457d20905e182aed);
-        
-    
-            var feature_group_4ae72917e2f32ae15e22e0ca7bec5923 = L.featureGroup(
-                {
-}
-            );
-        
-    
-            var circle_marker_40c0c291d57abfbcf4153823ec29081a = L.circleMarker(
-                [16.0, 135.600006103516],
-                {"bubblingMouseEvents": true, "color": "cadetblue", "dashArray": null, "dashOffset": null, "fill": true, "fillColor": "cadetblue", "fillOpacity": 1.0, "fillRule": "evenodd", "lineCap": "round", "lineJoin": "round", "opacity": 1.0, "radius": 5, "stroke": true, "weight": 3}
-            ).addTo(feature_group_4ae72917e2f32ae15e22e0ca7bec5923);
-        
-    
-        var popup_3bac1bc182095a27e48270490838f347 = L.popup({
-  "maxWidth": 300,
-});
-
-        
-            
-                var html_58a8c188b2409eacb7f7cbbdc1d24a43 = $(`<div id="html_58a8c188b2409eacb7f7cbbdc1d24a43" style="width: 100.0%; height: 100.0%;"><b>NCDR: HKO發佈時間:10/20 08</b><br><b>位置：北緯 16.0°, 東經 135.6°</b></div>`)[0];
-                popup_3bac1bc182095a27e48270490838f347.setContent(html_58a8c188b2409eacb7f7cbbdc1d24a43);
-            
-        
-
-        circle_marker_40c0c291d57abfbcf4153823ec29081a.bindPopup(popup_3bac1bc182095a27e48270490838f347)
-        ;
-
-        
-    
-    
-            circle_marker_40c0c291d57abfbcf4153823ec29081a.bindTooltip(
-                `<div>
-                     NCDR: HKO發佈時間:10/20 08 (北緯 16.0°, 東經 135.6°)
-                 </div>`,
-                {
-  "sticky": true,
-}
-            );
-        
-    
-            var circle_marker_dbe6c922617a248c4e2c60a9c4a3761b = L.circleMarker(
-                [18.2000007629395, 130.600006103516],
-                {"bubblingMouseEvents": true, "color": "cadetblue", "dashArray": null, "dashOffset": null, "fill": true, "fillColor": "cadetblue", "fillOpacity": 1.0, "fillRule": "evenodd", "lineCap": "round", "lineJoin": "round", "opacity": 1.0, "radius": 5, "stroke": true, "weight": 3}
-            ).addTo(feature_group_4ae72917e2f32ae15e22e0ca7bec5923);
-        
-    
-        var popup_4912615fef4d8fd95c617b9ee6c021f5 = L.popup({
-  "maxWidth": 300,
-});
-
-        
-            
-                var html_ad22bf73afff417093cbb567d8c36402 = $(`<div id="html_ad22bf73afff417093cbb567d8c36402" style="width: 100.0%; height: 100.0%;"><b>NCDR: 颱風路徑</b><br><b>位置：北緯 18.2°, 東經 130.6°</b></div>`)[0];
-                popup_4912615fef4d8fd95c617b9ee6c021f5.setContent(html_ad22bf73afff417093cbb567d8c36402);
-            
-        
-
-        circle_marker_dbe6c922617a248c4e2c60a9c4a3761b.bindPopup(popup_4912615fef4d8fd95c617b9ee6c021f5)
-        ;
-
-        
-    
-    
-            circle_marker_dbe6c922617a248c4e2c60a9c4a3761b.bindTooltip(
-                `<div>
-                     NCDR: 颱風路徑 (北緯 18.2°, 東經 130.6°)
-                 </div>`,
-                {
-  "sticky": true,
-}
-            );
-        
-    
-            var circle_marker_abc28a2229436079246d3efecc12160b = L.circleMarker(
-                [20.6000003814697, 126.800003051758],
-                {"bubblingMouseEvents": true, "color": "cadetblue", "dashArray": null, "dashOffset": null, "fill": true, "fillColor": "cadetblue", "fillOpacity": 1.0, "fillRule": "evenodd", "lineCap": "round", "lineJoin": "round", "opacity": 1.0, "radius": 5, "stroke": true, "weight": 3}
-            ).addTo(feature_group_4ae72917e2f32ae15e22e0ca7bec5923);
-        
-    
-        var popup_032f3f3c04b134631a87bd09df5bef8f = L.popup({
-  "maxWidth": 300,
-});
-
-        
-            
-                var html_0d9852704f17c75972ccb198ed10514f = $(`<div id="html_0d9852704f17c75972ccb198ed10514f" style="width: 100.0%; height: 100.0%;"><b>NCDR: 颱風路徑</b><br><b>位置：北緯 20.6°, 東經 126.8°</b></div>`)[0];
-                popup_032f3f3c04b134631a87bd09df5bef8f.setContent(html_0d9852704f17c75972ccb198ed10514f);
-            
-        
-
-        circle_marker_abc28a2229436079246d3efecc12160b.bindPopup(popup_032f3f3c04b134631a87bd09df5bef8f)
-        ;
-
-        
-    
-    
-            circle_marker_abc28a2229436079246d3efecc12160b.bindTooltip(
-                `<div>
-                     NCDR: 颱風路徑 (北緯 20.6°, 東經 126.8°)
-                 </div>`,
-                {
-  "sticky": true,
-}
-            );
-        
-    
-            var circle_marker_3c7bbdbab56faeba4ac6019a75db3c23 = L.circleMarker(
-                [22.8999996185303, 124.900001525879],
-                {"bubblingMouseEvents": true, "color": "cadetblue", "dashArray": null, "dashOffset": null, "fill": true, "fillColor": "cadetblue", "fillOpacity": 1.0, "fillRule": "evenodd", "lineCap": "round", "lineJoin": "round", "opacity": 1.0, "radius": 5, "stroke": true, "weight": 3}
-            ).addTo(feature_group_4ae72917e2f32ae15e22e0ca7bec5923);
-        
-    
-        var popup_9c3c5e8191636af2a3329aaf46914bed = L.popup({
-  "maxWidth": 300,
-});
-
-        
-            
-                var html_73bcfce34685152784b6287969f0f34e = $(`<div id="html_73bcfce34685152784b6287969f0f34e" style="width: 100.0%; height: 100.0%;"><b>NCDR: 颱風路徑</b><br><b>位置：北緯 22.9°, 東經 124.9°</b></div>`)[0];
-                popup_9c3c5e8191636af2a3329aaf46914bed.setContent(html_73bcfce34685152784b6287969f0f34e);
-            
-        
-
-        circle_marker_3c7bbdbab56faeba4ac6019a75db3c23.bindPopup(popup_9c3c5e8191636af2a3329aaf46914bed)
-        ;
-
-        
-    
-    
-            circle_marker_3c7bbdbab56faeba4ac6019a75db3c23.bindTooltip(
-                `<div>
-                     NCDR: 颱風路徑 (北緯 22.9°, 東經 124.9°)
-                 </div>`,
-                {
-  "sticky": true,
-}
-            );
-        
-    
-            var circle_marker_daff36134dd6ee63278c68e6c0f317a4 = L.circleMarker(
-                [26.6000003814697, 123.5],
-                {"bubblingMouseEvents": true, "color": "cadetblue", "dashArray": null, "dashOffset": null, "fill": true, "fillColor": "cadetblue", "fillOpacity": 1.0, "fillRule": "evenodd", "lineCap": "round", "lineJoin": "round", "opacity": 1.0, "radius": 5, "stroke": true, "weight": 3}
-            ).addTo(feature_group_4ae72917e2f32ae15e22e0ca7bec5923);
-        
-    
-        var popup_3f872140da44cd66af8b93b81253f7e8 = L.popup({
-  "maxWidth": 300,
-});
-
-        
-            
-                var html_dd7911b57eefa76f6fc84e9add96f080 = $(`<div id="html_dd7911b57eefa76f6fc84e9add96f080" style="width: 100.0%; height: 100.0%;"><b>NCDR: 颱風路徑</b><br><b>位置：北緯 26.6°, 東經 123.5°</b></div>`)[0];
-                popup_3f872140da44cd66af8b93b81253f7e8.setContent(html_dd7911b57eefa76f6fc84e9add96f080);
-            
-        
-
-        circle_marker_daff36134dd6ee63278c68e6c0f317a4.bindPopup(popup_3f872140da44cd66af8b93b81253f7e8)
-        ;
-
-        
-    
-    
-            circle_marker_daff36134dd6ee63278c68e6c0f317a4.bindTooltip(
-                `<div>
-                     NCDR: 颱風路徑 (北緯 26.6°, 東經 123.5°)
-                 </div>`,
-                {
-  "sticky": true,
-}
-            );
-        
-    
-            var circle_marker_830d3ecec8bf79a0ba152162721e13b8 = L.circleMarker(
-                [30.2999992370605, 125.099998474121],
-                {"bubblingMouseEvents": true, "color": "cadetblue", "dashArray": null, "dashOffset": null, "fill": true, "fillColor": "cadetblue", "fillOpacity": 1.0, "fillRule": "evenodd", "lineCap": "round", "lineJoin": "round", "opacity": 1.0, "radius": 5, "stroke": true, "weight": 3}
-            ).addTo(feature_group_4ae72917e2f32ae15e22e0ca7bec5923);
-        
-    
-        var popup_a5f207d6b48185a8614f6e947a8c6775 = L.popup({
-  "maxWidth": 300,
-});
-
-        
-            
-                var html_dab2aa681e6c1e84aeb84b07b73b27db = $(`<div id="html_dab2aa681e6c1e84aeb84b07b73b27db" style="width: 100.0%; height: 100.0%;"><b>NCDR: 颱風路徑</b><br><b>位置：北緯 30.3°, 東經 125.1°</b></div>`)[0];
-                popup_a5f207d6b48185a8614f6e947a8c6775.setContent(html_dab2aa681e6c1e84aeb84b07b73b27db);
-            
-        
-
-        circle_marker_830d3ecec8bf79a0ba152162721e13b8.bindPopup(popup_a5f207d6b48185a8614f6e947a8c6775)
-        ;
-
-        
-    
-    
-            circle_marker_830d3ecec8bf79a0ba152162721e13b8.bindTooltip(
-                `<div>
-                     NCDR: 颱風路徑 (北緯 30.3°, 東經 125.1°)
-                 </div>`,
-                {
-  "sticky": true,
-}
-            );
-        
-    
-            var poly_line_1eade4ec0b4f227682454c6a77e15ceb = L.polyline(
-                [[16.0, 135.6], [18.2, 130.6], [20.6, 126.8], [22.9, 124.9], [26.6, 123.5], [30.3, 125.1]],
-                {"bubblingMouseEvents": true, "color": "cadetblue", "dashArray": null, "dashOffset": null, "fill": false, "fillColor": "cadetblue", "fillOpacity": 0.2, "fillRule": "evenodd", "lineCap": "round", "lineJoin": "round", "noClip": false, "opacity": 1.0, "smoothFactor": 1.0, "stroke": true, "weight": 4}
-            ).addTo(feature_group_4ae72917e2f32ae15e22e0ca7bec5923);
-        
-    
-            poly_line_1eade4ec0b4f227682454c6a77e15ceb.bindTooltip(
-                `<div>
-                     <b>NCDR: HKO</b>
-                 </div>`,
-                {
-  "sticky": true,
-}
-            );
-        
-    
-            var circle_marker_9585d45f3d671e61a3b2e12f125f02a5 = L.circleMarker(
-                [15.8999996185303, 135.600006103516],
-                {"bubblingMouseEvents": true, "color": "green", "dashArray": null, "dashOffset": null, "fill": true, "fillColor": "green", "fillOpacity": 1.0, "fillRule": "evenodd", "lineCap": "round", "lineJoin": "round", "opacity": 1.0, "radius": 5, "stroke": true, "weight": 3}
-            ).addTo(feature_group_4ae72917e2f32ae15e22e0ca7bec5923);
-        
-    
-        var popup_7e4d39997c3d1ac09a3506eaedf3425c = L.popup({
-  "maxWidth": 300,
-});
-
-        
-            
-                var html_ebdfedc3d2b3125c989fa578c14e5b8f = $(`<div id="html_ebdfedc3d2b3125c989fa578c14e5b8f" style="width: 100.0%; height: 100.0%;"><b>NCDR: JTWC發佈時間:10/20 08</b><br><b>位置：北緯 15.9°, 東經 135.6°</b></div>`)[0];
-                popup_7e4d39997c3d1ac09a3506eaedf3425c.setContent(html_ebdfedc3d2b3125c989fa578c14e5b8f);
-            
-        
-
-        circle_marker_9585d45f3d671e61a3b2e12f125f02a5.bindPopup(popup_7e4d39997c3d1ac09a3506eaedf3425c)
-        ;
-
-        
-    
-    
-            circle_marker_9585d45f3d671e61a3b2e12f125f02a5.bindTooltip(
-                `<div>
-                     NCDR: JTWC發佈時間:10/20 08 (北緯 15.9°, 東經 135.6°)
-                 </div>`,
-                {
-  "sticky": true,
-}
-            );
-        
-    
-            var circle_marker_bef4e71d0060fa8b913362704c9599fc = L.circleMarker(
-                [18.1000003814697, 130.699996948242],
-                {"bubblingMouseEvents": true, "color": "cadetblue", "dashArray": null, "dashOffset": null, "fill": true, "fillColor": "cadetblue", "fillOpacity": 1.0, "fillRule": "evenodd", "lineCap": "round", "lineJoin": "round", "opacity": 1.0, "radius": 5, "stroke": true, "weight": 3}
-            ).addTo(feature_group_4ae72917e2f32ae15e22e0ca7bec5923);
-        
-    
-        var popup_7d5495177b0f0e81a5e0bc4aa4e3f84d = L.popup({
-  "maxWidth": 300,
-});
-
-        
-            
-                var html_477cdb29703f9c7501c6b3024cd9b8a4 = $(`<div id="html_477cdb29703f9c7501c6b3024cd9b8a4" style="width: 100.0%; height: 100.0%;"><b>NCDR: 颱風路徑</b><br><b>位置：北緯 18.1°, 東經 130.7°</b></div>`)[0];
-                popup_7d5495177b0f0e81a5e0bc4aa4e3f84d.setContent(html_477cdb29703f9c7501c6b3024cd9b8a4);
-            
-        
-
-        circle_marker_bef4e71d0060fa8b913362704c9599fc.bindPopup(popup_7d5495177b0f0e81a5e0bc4aa4e3f84d)
-        ;
-
-        
-    
-    
-            circle_marker_bef4e71d0060fa8b913362704c9599fc.bindTooltip(
-                `<div>
-                     NCDR: 颱風路徑 (北緯 18.1°, 東經 130.7°)
-                 </div>`,
-                {
-  "sticky": true,
-}
-            );
-        
-    
-            var circle_marker_dab3bc72f5337cc9faa4da347951e5fe = L.circleMarker(
-                [20.3999996185303, 127.099998474121],
-                {"bubblingMouseEvents": true, "color": "cadetblue", "dashArray": null, "dashOffset": null, "fill": true, "fillColor": "cadetblue", "fillOpacity": 1.0, "fillRule": "evenodd", "lineCap": "round", "lineJoin": "round", "opacity": 1.0, "radius": 5, "stroke": true, "weight": 3}
-            ).addTo(feature_group_4ae72917e2f32ae15e22e0ca7bec5923);
-        
-    
-        var popup_126ccde9fe5cbe7257293aa0dcbf79b8 = L.popup({
-  "maxWidth": 300,
-});
-
-        
-            
-                var html_212f7ea280155a88b866a5fe14e0f1e9 = $(`<div id="html_212f7ea280155a88b866a5fe14e0f1e9" style="width: 100.0%; height: 100.0%;"><b>NCDR: 颱風路徑</b><br><b>位置：北緯 20.4°, 東經 127.1°</b></div>`)[0];
-                popup_126ccde9fe5cbe7257293aa0dcbf79b8.setContent(html_212f7ea280155a88b866a5fe14e0f1e9);
-            
-        
-
-        circle_marker_dab3bc72f5337cc9faa4da347951e5fe.bindPopup(popup_126ccde9fe5cbe7257293aa0dcbf79b8)
-        ;
-
-        
-    
-    
-            circle_marker_dab3bc72f5337cc9faa4da347951e5fe.bindTooltip(
-                `<div>
-                     NCDR: 颱風路徑 (北緯 20.4°, 東經 127.1°)
-                 </div>`,
-                {
-  "sticky": true,
-}
-            );
-        
-    
-            var circle_marker_ba114ce231a03851e19ca91b653de8be = L.circleMarker(
-                [22.7999992370605, 125.0],
-                {"bubblingMouseEvents": true, "color": "cadetblue", "dashArray": null, "dashOffset": null, "fill": true, "fillColor": "cadetblue", "fillOpacity": 1.0, "fillRule": "evenodd", "lineCap": "round", "lineJoin": "round", "opacity": 1.0, "radius": 5, "stroke": true, "weight": 3}
-            ).addTo(feature_group_4ae72917e2f32ae15e22e0ca7bec5923);
-        
-    
-        var popup_e5e7fbef1811efc54839503936f74804 = L.popup({
-  "maxWidth": 300,
-});
-
-        
-            
-                var html_7bbf0fd04f3b4bdfe9832e726a9ce425 = $(`<div id="html_7bbf0fd04f3b4bdfe9832e726a9ce425" style="width: 100.0%; height: 100.0%;"><b>NCDR: 颱風路徑</b><br><b>位置：北緯 22.8°, 東經 125.0°</b></div>`)[0];
-                popup_e5e7fbef1811efc54839503936f74804.setContent(html_7bbf0fd04f3b4bdfe9832e726a9ce425);
-            
-        
-
-        circle_marker_ba114ce231a03851e19ca91b653de8be.bindPopup(popup_e5e7fbef1811efc54839503936f74804)
-        ;
-
-        
-    
-    
-            circle_marker_ba114ce231a03851e19ca91b653de8be.bindTooltip(
-                `<div>
-                     NCDR: 颱風路徑 (北緯 22.8°, 東經 125.0°)
-                 </div>`,
-                {
-  "sticky": true,
-}
-            );
-        
-    
-            var circle_marker_7b88043223bcd154ed26d749417adf83 = L.circleMarker(
-                [26.5, 124.0],
-                {"bubblingMouseEvents": true, "color": "cadetblue", "dashArray": null, "dashOffset": null, "fill": true, "fillColor": "cadetblue", "fillOpacity": 1.0, "fillRule": "evenodd", "lineCap": "round", "lineJoin": "round", "opacity": 1.0, "radius": 5, "stroke": true, "weight": 3}
-            ).addTo(feature_group_4ae72917e2f32ae15e22e0ca7bec5923);
-        
-    
-        var popup_7371add20a7464ca7ca3ad33be36f748 = L.popup({
-  "maxWidth": 300,
-});
-
-        
-            
-                var html_10bb698965754a3c4e9401d8f332813c = $(`<div id="html_10bb698965754a3c4e9401d8f332813c" style="width: 100.0%; height: 100.0%;"><b>NCDR: 颱風路徑</b><br><b>位置：北緯 26.5°, 東經 124.0°</b></div>`)[0];
-                popup_7371add20a7464ca7ca3ad33be36f748.setContent(html_10bb698965754a3c4e9401d8f332813c);
-            
-        
-
-        circle_marker_7b88043223bcd154ed26d749417adf83.bindPopup(popup_7371add20a7464ca7ca3ad33be36f748)
-        ;
-
-        
-    
-    
-            circle_marker_7b88043223bcd154ed26d749417adf83.bindTooltip(
-                `<div>
-                     NCDR: 颱風路徑 (北緯 26.5°, 東經 124.0°)
-                 </div>`,
-                {
-  "sticky": true,
-}
-            );
-        
-    
-            var circle_marker_37be96af0218693d15ae65fa2b67ff7b = L.circleMarker(
-                [30.0, 125.900001525879],
-                {"bubblingMouseEvents": true, "color": "cadetblue", "dashArray": null, "dashOffset": null, "fill": true, "fillColor": "cadetblue", "fillOpacity": 1.0, "fillRule": "evenodd", "lineCap": "round", "lineJoin": "round", "opacity": 1.0, "radius": 5, "stroke": true, "weight": 3}
-            ).addTo(feature_group_4ae72917e2f32ae15e22e0ca7bec5923);
-        
-    
-        var popup_c6072c01ee88b05907e77e909d201f5c = L.popup({
-  "maxWidth": 300,
-});
-
-        
-            
-                var html_d792e4e8d38f4e48d33c5acdeb8df14a = $(`<div id="html_d792e4e8d38f4e48d33c5acdeb8df14a" style="width: 100.0%; height: 100.0%;"><b>NCDR: 颱風路徑</b><br><b>位置：北緯 30.0°, 東經 125.9°</b></div>`)[0];
-                popup_c6072c01ee88b05907e77e909d201f5c.setContent(html_d792e4e8d38f4e48d33c5acdeb8df14a);
-            
-        
-
-        circle_marker_37be96af0218693d15ae65fa2b67ff7b.bindPopup(popup_c6072c01ee88b05907e77e909d201f5c)
-        ;
-
-        
-    
-    
-            circle_marker_37be96af0218693d15ae65fa2b67ff7b.bindTooltip(
-                `<div>
-                     NCDR: 颱風路徑 (北緯 30.0°, 東經 125.9°)
-                 </div>`,
-                {
-  "sticky": true,
-}
-            );
-        
-    
-            var poly_line_67da35062f417496656c4eab70cd33b8 = L.polyline(
-                [[15.9, 135.6], [18.1, 130.7], [20.4, 127.1], [22.8, 125.0], [26.5, 124.0], [30.0, 125.9]],
-                {"bubblingMouseEvents": true, "color": "green", "dashArray": null, "dashOffset": null, "fill": false, "fillColor": "green", "fillOpacity": 0.2, "fillRule": "evenodd", "lineCap": "round", "lineJoin": "round", "noClip": false, "opacity": 1.0, "smoothFactor": 1.0, "stroke": true, "weight": 4}
-            ).addTo(feature_group_4ae72917e2f32ae15e22e0ca7bec5923);
-        
-    
-            poly_line_67da35062f417496656c4eab70cd33b8.bindTooltip(
-                `<div>
-                     <b>NCDR: JTWC</b>
-                 </div>`,
-                {
-  "sticky": true,
-}
-            );
-        
-    
-            var circle_marker_3a264c0c7f43f0f86fdbb9933d6a9a84 = L.circleMarker(
-                [16.0, 135.600006103516],
-                {"bubblingMouseEvents": true, "color": "blue", "dashArray": null, "dashOffset": null, "fill": true, "fillColor": "blue", "fillOpacity": 1.0, "fillRule": "evenodd", "lineCap": "round", "lineJoin": "round", "opacity": 1.0, "radius": 5, "stroke": true, "weight": 3}
-            ).addTo(feature_group_4ae72917e2f32ae15e22e0ca7bec5923);
-        
-    
-        var popup_3854dc0085bad9dddd7154f9bb294357 = L.popup({
-  "maxWidth": 300,
-});
-
-        
-            
-                var html_ba5c847f2b6e305b6eaf3795897c2587 = $(`<div id="html_ba5c847f2b6e305b6eaf3795897c2587" style="width: 100.0%; height: 100.0%;"><b>NCDR: JMA發佈時間:10/20 08</b><br><b>位置：北緯 16.0°, 東經 135.6°</b></div>`)[0];
-                popup_3854dc0085bad9dddd7154f9bb294357.setContent(html_ba5c847f2b6e305b6eaf3795897c2587);
-            
-        
-
-        circle_marker_3a264c0c7f43f0f86fdbb9933d6a9a84.bindPopup(popup_3854dc0085bad9dddd7154f9bb294357)
-        ;
-
-        
-    
-    
-            circle_marker_3a264c0c7f43f0f86fdbb9933d6a9a84.bindTooltip(
-                `<div>
-                     NCDR: JMA發佈時間:10/20 08 (北緯 16.0°, 東經 135.6°)
-                 </div>`,
-                {
-  "sticky": true,
-}
-            );
-        
-    
-            var circle_marker_1e34bac0352a15839c8d9892cdf1c46f = L.circleMarker(
-                [18.2999992370605, 130.300003051758],
-                {"bubblingMouseEvents": true, "color": "cadetblue", "dashArray": null, "dashOffset": null, "fill": true, "fillColor": "cadetblue", "fillOpacity": 1.0, "fillRule": "evenodd", "lineCap": "round", "lineJoin": "round", "opacity": 1.0, "radius": 5, "stroke": true, "weight": 3}
-            ).addTo(feature_group_4ae72917e2f32ae15e22e0ca7bec5923);
-        
-    
-        var popup_e246414e5b6cfb27802deb6a4f8b8d3e = L.popup({
-  "maxWidth": 300,
-});
-
-        
-            
-                var html_8b504b2317a529f73fa3a57911ae457c = $(`<div id="html_8b504b2317a529f73fa3a57911ae457c" style="width: 100.0%; height: 100.0%;"><b>NCDR: 颱風路徑</b><br><b>位置：北緯 18.3°, 東經 130.3°</b></div>`)[0];
-                popup_e246414e5b6cfb27802deb6a4f8b8d3e.setContent(html_8b504b2317a529f73fa3a57911ae457c);
-            
-        
-
-        circle_marker_1e34bac0352a15839c8d9892cdf1c46f.bindPopup(popup_e246414e5b6cfb27802deb6a4f8b8d3e)
-        ;
-
-        
-    
-    
-            circle_marker_1e34bac0352a15839c8d9892cdf1c46f.bindTooltip(
-                `<div>
-                     NCDR: 颱風路徑 (北緯 18.3°, 東經 130.3°)
-                 </div>`,
-                {
-  "sticky": true,
-}
-            );
-        
-    
-            var circle_marker_d2958e11e8f1d1c3ac60a7e5add783eb = L.circleMarker(
-                [20.5, 126.5],
-                {"bubblingMouseEvents": true, "color": "cadetblue", "dashArray": null, "dashOffset": null, "fill": true, "fillColor": "cadetblue", "fillOpacity": 1.0, "fillRule": "evenodd", "lineCap": "round", "lineJoin": "round", "opacity": 1.0, "radius": 5, "stroke": true, "weight": 3}
-            ).addTo(feature_group_4ae72917e2f32ae15e22e0ca7bec5923);
-        
-    
-        var popup_b03aba497ae6c1f315ade6f32a7cbfc7 = L.popup({
-  "maxWidth": 300,
-});
-
-        
-            
-                var html_254f7c8c95a9822f82568056f350af34 = $(`<div id="html_254f7c8c95a9822f82568056f350af34" style="width: 100.0%; height: 100.0%;"><b>NCDR: 颱風路徑</b><br><b>位置：北緯 20.5°, 東經 126.5°</b></div>`)[0];
-                popup_b03aba497ae6c1f315ade6f32a7cbfc7.setContent(html_254f7c8c95a9822f82568056f350af34);
-            
-        
-
-        circle_marker_d2958e11e8f1d1c3ac60a7e5add783eb.bindPopup(popup_b03aba497ae6c1f315ade6f32a7cbfc7)
-        ;
-
-        
-    
-    
-            circle_marker_d2958e11e8f1d1c3ac60a7e5add783eb.bindTooltip(
-                `<div>
-                     NCDR: 颱風路徑 (北緯 20.5°, 東經 126.5°)
-                 </div>`,
-                {
-  "sticky": true,
-}
-            );
-        
-    
-            var circle_marker_d73bed89578214def1323ca719dc1f4b = L.circleMarker(
-                [22.5, 124.300003051758],
-                {"bubblingMouseEvents": true, "color": "cadetblue", "dashArray": null, "dashOffset": null, "fill": true, "fillColor": "cadetblue", "fillOpacity": 1.0, "fillRule": "evenodd", "lineCap": "round", "lineJoin": "round", "opacity": 1.0, "radius": 5, "stroke": true, "weight": 3}
-            ).addTo(feature_group_4ae72917e2f32ae15e22e0ca7bec5923);
-        
-    
-        var popup_13ab31dd1945d7df5d4f0d662b50539f = L.popup({
-  "maxWidth": 300,
-});
-
-        
-            
-                var html_46d93b209817298c12a5880c2be47796 = $(`<div id="html_46d93b209817298c12a5880c2be47796" style="width: 100.0%; height: 100.0%;"><b>NCDR: 颱風路徑</b><br><b>位置：北緯 22.5°, 東經 124.3°</b></div>`)[0];
-                popup_13ab31dd1945d7df5d4f0d662b50539f.setContent(html_46d93b209817298c12a5880c2be47796);
-            
-        
-
-        circle_marker_d73bed89578214def1323ca719dc1f4b.bindPopup(popup_13ab31dd1945d7df5d4f0d662b50539f)
-        ;
-
-        
-    
-    
-            circle_marker_d73bed89578214def1323ca719dc1f4b.bindTooltip(
-                `<div>
-                     NCDR: 颱風路徑 (北緯 22.5°, 東經 124.3°)
-                 </div>`,
-                {
-  "sticky": true,
-}
-            );
-        
-    
-            var circle_marker_0dfea0fca9bbde490c311208e9d4468c = L.circleMarker(
-                [25.3999996185303, 122.099998474121],
-                {"bubblingMouseEvents": true, "color": "cadetblue", "dashArray": null, "dashOffset": null, "fill": true, "fillColor": "cadetblue", "fillOpacity": 1.0, "fillRule": "evenodd", "lineCap": "round", "lineJoin": "round", "opacity": 1.0, "radius": 5, "stroke": true, "weight": 3}
-            ).addTo(feature_group_4ae72917e2f32ae15e22e0ca7bec5923);
-        
-    
-        var popup_c609119caa965ebd11989dbfde453b9d = L.popup({
-  "maxWidth": 300,
-});
-
-        
-            
-                var html_8dbc6787eee6c96a8efa78134af3b1b7 = $(`<div id="html_8dbc6787eee6c96a8efa78134af3b1b7" style="width: 100.0%; height: 100.0%;"><b>NCDR: 颱風路徑</b><br><b>位置：北緯 25.4°, 東經 122.1°</b></div>`)[0];
-                popup_c609119caa965ebd11989dbfde453b9d.setContent(html_8dbc6787eee6c96a8efa78134af3b1b7);
-            
-        
-
-        circle_marker_0dfea0fca9bbde490c311208e9d4468c.bindPopup(popup_c609119caa965ebd11989dbfde453b9d)
-        ;
-
-        
-    
-    
-            circle_marker_0dfea0fca9bbde490c311208e9d4468c.bindTooltip(
-                `<div>
-                     NCDR: 颱風路徑 (北緯 25.4°, 東經 122.1°)
-                 </div>`,
-                {
-  "sticky": true,
-}
-            );
-        
-    
-            var circle_marker_83e44c90531729156602fdfe8be1fbe9 = L.circleMarker(
-                [28.7000007629395, 121.900001525879],
-                {"bubblingMouseEvents": true, "color": "cadetblue", "dashArray": null, "dashOffset": null, "fill": true, "fillColor": "cadetblue", "fillOpacity": 1.0, "fillRule": "evenodd", "lineCap": "round", "lineJoin": "round", "opacity": 1.0, "radius": 5, "stroke": true, "weight": 3}
-            ).addTo(feature_group_4ae72917e2f32ae15e22e0ca7bec5923);
-        
-    
-        var popup_45ea067f27432c45de0f1b3658ad9c15 = L.popup({
-  "maxWidth": 300,
-});
-
-        
-            
-                var html_fcc0a046063abd877c6ebaefc57e3520 = $(`<div id="html_fcc0a046063abd877c6ebaefc57e3520" style="width: 100.0%; height: 100.0%;"><b>NCDR: 颱風路徑</b><br><b>位置：北緯 28.7°, 東經 121.9°</b></div>`)[0];
-                popup_45ea067f27432c45de0f1b3658ad9c15.setContent(html_fcc0a046063abd877c6ebaefc57e3520);
-            
-        
-
-        circle_marker_83e44c90531729156602fdfe8be1fbe9.bindPopup(popup_45ea067f27432c45de0f1b3658ad9c15)
-        ;
-
-        
-    
-    
-            circle_marker_83e44c90531729156602fdfe8be1fbe9.bindTooltip(
-                `<div>
-                     NCDR: 颱風路徑 (北緯 28.7°, 東經 121.9°)
-                 </div>`,
-                {
-  "sticky": true,
-}
-            );
-        
-    
-            var poly_line_d64095bf1c2a3edf7a3ac072f015e37e = L.polyline(
-                [[16.0, 135.6], [18.3, 130.3], [20.5, 126.5], [22.5, 124.3], [25.4, 122.1], [28.7, 121.9]],
-                {"bubblingMouseEvents": true, "color": "blue", "dashArray": null, "dashOffset": null, "fill": false, "fillColor": "blue", "fillOpacity": 0.2, "fillRule": "evenodd", "lineCap": "round", "lineJoin": "round", "noClip": false, "opacity": 1.0, "smoothFactor": 1.0, "stroke": true, "weight": 4}
-            ).addTo(feature_group_4ae72917e2f32ae15e22e0ca7bec5923);
-        
-    
-            poly_line_d64095bf1c2a3edf7a3ac072f015e37e.bindTooltip(
-                `<div>
-                     <b>NCDR: JMA</b>
-                 </div>`,
-                {
-  "sticky": true,
-}
-            );
-        
-    
-            var circle_marker_d78fa10b98c5ca8ede587b455f84d6a4 = L.circleMarker(
-                [16.2000007629395, 135.0],
-                {"bubblingMouseEvents": true, "color": "cadetblue", "dashArray": null, "dashOffset": null, "fill": true, "fillColor": "cadetblue", "fillOpacity": 1.0, "fillRule": "evenodd", "lineCap": "round", "lineJoin": "round", "opacity": 1.0, "radius": 5, "stroke": true, "weight": 3}
-            ).addTo(feature_group_4ae72917e2f32ae15e22e0ca7bec5923);
-        
-    
-        var popup_148d5567a3fbcd1ebdb88ba37fcc4227 = L.popup({
-  "maxWidth": 300,
-});
-
-        
-            
-                var html_a51f2e893f81b5721893ae2c6fca0c99 = $(`<div id="html_a51f2e893f81b5721893ae2c6fca0c99" style="width: 100.0%; height: 100.0%;"><b>NCDR: NMC發佈時間:10/20 11</b><br><b>位置：北緯 16.2°, 東經 135.0°</b></div>`)[0];
-                popup_148d5567a3fbcd1ebdb88ba37fcc4227.setContent(html_a51f2e893f81b5721893ae2c6fca0c99);
-            
-        
-
-        circle_marker_d78fa10b98c5ca8ede587b455f84d6a4.bindPopup(popup_148d5567a3fbcd1ebdb88ba37fcc4227)
-        ;
-
-        
-    
-    
-            circle_marker_d78fa10b98c5ca8ede587b455f84d6a4.bindTooltip(
-                `<div>
-                     NCDR: NMC發佈時間:10/20 11 (北緯 16.2°, 東經 135.0°)
-                 </div>`,
-                {
-  "sticky": true,
-}
-            );
-        
-    
-            var circle_marker_7c9643a991d061367e087a27e0b9290e = L.circleMarker(
-                [18.5, 130.0],
-                {"bubblingMouseEvents": true, "color": "cadetblue", "dashArray": null, "dashOffset": null, "fill": true, "fillColor": "cadetblue", "fillOpacity": 1.0, "fillRule": "evenodd", "lineCap": "round", "lineJoin": "round", "opacity": 1.0, "radius": 5, "stroke": true, "weight": 3}
-            ).addTo(feature_group_4ae72917e2f32ae15e22e0ca7bec5923);
-        
-    
-        var popup_9b7f3f43adcd3da2c0c13e3936b1429e = L.popup({
-  "maxWidth": 300,
-});
-
-        
-            
-                var html_516d380b9f1933b455da225f2383cb8b = $(`<div id="html_516d380b9f1933b455da225f2383cb8b" style="width: 100.0%; height: 100.0%;"><b>NCDR: 颱風路徑</b><br><b>位置：北緯 18.5°, 東經 130.0°</b></div>`)[0];
-                popup_9b7f3f43adcd3da2c0c13e3936b1429e.setContent(html_516d380b9f1933b455da225f2383cb8b);
-            
-        
-
-        circle_marker_7c9643a991d061367e087a27e0b9290e.bindPopup(popup_9b7f3f43adcd3da2c0c13e3936b1429e)
-        ;
-
-        
-    
-    
-            circle_marker_7c9643a991d061367e087a27e0b9290e.bindTooltip(
-                `<div>
-                     NCDR: 颱風路徑 (北緯 18.5°, 東經 130.0°)
-                 </div>`,
-                {
-  "sticky": true,
-}
-            );
-        
-    
-            var circle_marker_73138ac907ea36bb21d91e2232baa1a8 = L.circleMarker(
-                [20.7999992370605, 126.400001525879],
-                {"bubblingMouseEvents": true, "color": "cadetblue", "dashArray": null, "dashOffset": null, "fill": true, "fillColor": "cadetblue", "fillOpacity": 1.0, "fillRule": "evenodd", "lineCap": "round", "lineJoin": "round", "opacity": 1.0, "radius": 5, "stroke": true, "weight": 3}
-            ).addTo(feature_group_4ae72917e2f32ae15e22e0ca7bec5923);
-        
-    
-        var popup_2a1e0c3fd0deb9309e023712d2f0340c = L.popup({
-  "maxWidth": 300,
-});
-
-        
-            
-                var html_bc10d1270c3808dc00348e95e9e91daa = $(`<div id="html_bc10d1270c3808dc00348e95e9e91daa" style="width: 100.0%; height: 100.0%;"><b>NCDR: 颱風路徑</b><br><b>位置：北緯 20.8°, 東經 126.4°</b></div>`)[0];
-                popup_2a1e0c3fd0deb9309e023712d2f0340c.setContent(html_bc10d1270c3808dc00348e95e9e91daa);
-            
-        
-
-        circle_marker_73138ac907ea36bb21d91e2232baa1a8.bindPopup(popup_2a1e0c3fd0deb9309e023712d2f0340c)
-        ;
-
-        
-    
-    
-            circle_marker_73138ac907ea36bb21d91e2232baa1a8.bindTooltip(
-                `<div>
-                     NCDR: 颱風路徑 (北緯 20.8°, 東經 126.4°)
-                 </div>`,
-                {
-  "sticky": true,
-}
-            );
-        
-    
-            var circle_marker_590ab6961cb1f7af99e3eefc22e7f2cc = L.circleMarker(
-                [23.1000003814697, 124.300003051758],
-                {"bubblingMouseEvents": true, "color": "cadetblue", "dashArray": null, "dashOffset": null, "fill": true, "fillColor": "cadetblue", "fillOpacity": 1.0, "fillRule": "evenodd", "lineCap": "round", "lineJoin": "round", "opacity": 1.0, "radius": 5, "stroke": true, "weight": 3}
-            ).addTo(feature_group_4ae72917e2f32ae15e22e0ca7bec5923);
-        
-    
-        var popup_17bd252e298d44e8e226e8a92d3bec97 = L.popup({
-  "maxWidth": 300,
-});
-
-        
-            
-                var html_d456ba1e31a99ce5852091bc471dbe11 = $(`<div id="html_d456ba1e31a99ce5852091bc471dbe11" style="width: 100.0%; height: 100.0%;"><b>NCDR: 颱風路徑</b><br><b>位置：北緯 23.1°, 東經 124.3°</b></div>`)[0];
-                popup_17bd252e298d44e8e226e8a92d3bec97.setContent(html_d456ba1e31a99ce5852091bc471dbe11);
-            
-        
-
-        circle_marker_590ab6961cb1f7af99e3eefc22e7f2cc.bindPopup(popup_17bd252e298d44e8e226e8a92d3bec97)
-        ;
-
-        
-    
-    
-            circle_marker_590ab6961cb1f7af99e3eefc22e7f2cc.bindTooltip(
-                `<div>
-                     NCDR: 颱風路徑 (北緯 23.1°, 東經 124.3°)
-                 </div>`,
-                {
-  "sticky": true,
-}
-            );
-        
-    
-            var circle_marker_993ad980218ba1caad7322b958f157a8 = L.circleMarker(
-                [26.1000003814697, 123.099998474121],
-                {"bubblingMouseEvents": true, "color": "cadetblue", "dashArray": null, "dashOffset": null, "fill": true, "fillColor": "cadetblue", "fillOpacity": 1.0, "fillRule": "evenodd", "lineCap": "round", "lineJoin": "round", "opacity": 1.0, "radius": 5, "stroke": true, "weight": 3}
-            ).addTo(feature_group_4ae72917e2f32ae15e22e0ca7bec5923);
-        
-    
-        var popup_9fa670d3cb0f80e28a12df4c0d364b1f = L.popup({
-  "maxWidth": 300,
-});
-
-        
-            
-                var html_24ebb0872773cf396916d7c9b067a4c7 = $(`<div id="html_24ebb0872773cf396916d7c9b067a4c7" style="width: 100.0%; height: 100.0%;"><b>NCDR: 颱風路徑</b><br><b>位置：北緯 26.1°, 東經 123.1°</b></div>`)[0];
-                popup_9fa670d3cb0f80e28a12df4c0d364b1f.setContent(html_24ebb0872773cf396916d7c9b067a4c7);
-            
-        
-
-        circle_marker_993ad980218ba1caad7322b958f157a8.bindPopup(popup_9fa670d3cb0f80e28a12df4c0d364b1f)
-        ;
-
-        
-    
-    
-            circle_marker_993ad980218ba1caad7322b958f157a8.bindTooltip(
-                `<div>
-                     NCDR: 颱風路徑 (北緯 26.1°, 東經 123.1°)
-                 </div>`,
-                {
-  "sticky": true,
-}
-            );
-        
-    
-            var circle_marker_b30fe29c9a6ecc2361ca0297cec178c4 = L.circleMarker(
-                [28.8999996185303, 123.800003051758],
-                {"bubblingMouseEvents": true, "color": "cadetblue", "dashArray": null, "dashOffset": null, "fill": true, "fillColor": "cadetblue", "fillOpacity": 1.0, "fillRule": "evenodd", "lineCap": "round", "lineJoin": "round", "opacity": 1.0, "radius": 5, "stroke": true, "weight": 3}
-            ).addTo(feature_group_4ae72917e2f32ae15e22e0ca7bec5923);
-        
-    
-        var popup_9c2ae0851f847040af5cf3a7c97b6601 = L.popup({
-  "maxWidth": 300,
-});
-
-        
-            
-                var html_f0176584f8755e10252510e371eab4cc = $(`<div id="html_f0176584f8755e10252510e371eab4cc" style="width: 100.0%; height: 100.0%;"><b>NCDR: 颱風路徑</b><br><b>位置：北緯 28.9°, 東經 123.8°</b></div>`)[0];
-                popup_9c2ae0851f847040af5cf3a7c97b6601.setContent(html_f0176584f8755e10252510e371eab4cc);
-            
-        
-
-        circle_marker_b30fe29c9a6ecc2361ca0297cec178c4.bindPopup(popup_9c2ae0851f847040af5cf3a7c97b6601)
-        ;
-
-        
-    
-    
-            circle_marker_b30fe29c9a6ecc2361ca0297cec178c4.bindTooltip(
-                `<div>
-                     NCDR: 颱風路徑 (北緯 28.9°, 東經 123.8°)
-                 </div>`,
-                {
-  "sticky": true,
-}
-            );
-        
-    
-            var poly_line_80024a4e9d4bf6b7ea6ed8bb7987f302 = L.polyline(
-                [[16.2, 135.0], [18.5, 130.0], [20.8, 126.4], [23.1, 124.3], [26.1, 123.1], [28.9, 123.8]],
-                {"bubblingMouseEvents": true, "color": "cadetblue", "dashArray": null, "dashOffset": null, "fill": false, "fillColor": "cadetblue", "fillOpacity": 0.2, "fillRule": "evenodd", "lineCap": "round", "lineJoin": "round", "noClip": false, "opacity": 1.0, "smoothFactor": 1.0, "stroke": true, "weight": 4}
-            ).addTo(feature_group_4ae72917e2f32ae15e22e0ca7bec5923);
-        
-    
-            poly_line_80024a4e9d4bf6b7ea6ed8bb7987f302.bindTooltip(
-                `<div>
-                     <b>NCDR: NMC</b>
-                 </div>`,
-                {
-  "sticky": true,
-}
-            );
-        
-    
-            var circle_marker_32b996968df3264425cd0f56ede7d1da = L.circleMarker(
-                [16.0, 135.600006103516],
-                {"bubblingMouseEvents": true, "color": "red", "dashArray": null, "dashOffset": null, "fill": true, "fillColor": "red", "fillOpacity": 1.0, "fillRule": "evenodd", "lineCap": "round", "lineJoin": "round", "opacity": 1.0, "radius": 5, "stroke": true, "weight": 3}
-            ).addTo(feature_group_4ae72917e2f32ae15e22e0ca7bec5923);
-        
-    
-        var popup_1c494644a7f415b0fb12e1d5b661a522 = L.popup({
-  "maxWidth": 300,
-});
-
-        
-            
-                var html_64706057b3296583d6571bbcd2d92bc4 = $(`<div id="html_64706057b3296583d6571bbcd2d92bc4" style="width: 100.0%; height: 100.0%;"><b>NCDR: CWA發佈時間:10/20 08</b><br><b>位置：北緯 16.0°, 東經 135.6°</b></div>`)[0];
-                popup_1c494644a7f415b0fb12e1d5b661a522.setContent(html_64706057b3296583d6571bbcd2d92bc4);
-            
-        
-
-        circle_marker_32b996968df3264425cd0f56ede7d1da.bindPopup(popup_1c494644a7f415b0fb12e1d5b661a522)
-        ;
-
-        
-    
-    
-            circle_marker_32b996968df3264425cd0f56ede7d1da.bindTooltip(
-                `<div>
-                     NCDR: CWA發佈時間:10/20 08 (北緯 16.0°, 東經 135.6°)
-                 </div>`,
-                {
-  "sticky": true,
-}
-            );
-        
-    
-            var circle_marker_47108e62b11b1058bf3036b4fd998a73 = L.circleMarker(
-                [18.0, 130.399993896484],
-                {"bubblingMouseEvents": true, "color": "cadetblue", "dashArray": null, "dashOffset": null, "fill": true, "fillColor": "cadetblue", "fillOpacity": 1.0, "fillRule": "evenodd", "lineCap": "round", "lineJoin": "round", "opacity": 1.0, "radius": 5, "stroke": true, "weight": 3}
-            ).addTo(feature_group_4ae72917e2f32ae15e22e0ca7bec5923);
-        
-    
-        var popup_338db7917625711ae6e94b6c281e29cc = L.popup({
-  "maxWidth": 300,
-});
-
-        
-            
-                var html_52c56dc257888d08b8536fe4d235b028 = $(`<div id="html_52c56dc257888d08b8536fe4d235b028" style="width: 100.0%; height: 100.0%;"><b>NCDR: 颱風路徑</b><br><b>位置：北緯 18.0°, 東經 130.4°</b></div>`)[0];
-                popup_338db7917625711ae6e94b6c281e29cc.setContent(html_52c56dc257888d08b8536fe4d235b028);
-            
-        
-
-        circle_marker_47108e62b11b1058bf3036b4fd998a73.bindPopup(popup_338db7917625711ae6e94b6c281e29cc)
-        ;
-
-        
-    
-    
-            circle_marker_47108e62b11b1058bf3036b4fd998a73.bindTooltip(
-                `<div>
-                     NCDR: 颱風路徑 (北緯 18.0°, 東經 130.4°)
-                 </div>`,
-                {
-  "sticky": true,
-}
-            );
-        
-    
-            var circle_marker_ade8ca2f95d82e34e1e108da36db4001 = L.circleMarker(
-                [20.7999992370605, 126.599998474121],
-                {"bubblingMouseEvents": true, "color": "cadetblue", "dashArray": null, "dashOffset": null, "fill": true, "fillColor": "cadetblue", "fillOpacity": 1.0, "fillRule": "evenodd", "lineCap": "round", "lineJoin": "round", "opacity": 1.0, "radius": 5, "stroke": true, "weight": 3}
-            ).addTo(feature_group_4ae72917e2f32ae15e22e0ca7bec5923);
-        
-    
-        var popup_45925c4907c2bf29999d852313733a24 = L.popup({
-  "maxWidth": 300,
-});
-
-        
-            
-                var html_d683acaa482661fd082081406e321cb8 = $(`<div id="html_d683acaa482661fd082081406e321cb8" style="width: 100.0%; height: 100.0%;"><b>NCDR: 颱風路徑</b><br><b>位置：北緯 20.8°, 東經 126.6°</b></div>`)[0];
-                popup_45925c4907c2bf29999d852313733a24.setContent(html_d683acaa482661fd082081406e321cb8);
-            
-        
-
-        circle_marker_ade8ca2f95d82e34e1e108da36db4001.bindPopup(popup_45925c4907c2bf29999d852313733a24)
-        ;
-
-        
-    
-    
-            circle_marker_ade8ca2f95d82e34e1e108da36db4001.bindTooltip(
-                `<div>
-                     NCDR: 颱風路徑 (北緯 20.8°, 東經 126.6°)
-                 </div>`,
-                {
-  "sticky": true,
-}
-            );
-        
-    
-            var circle_marker_a18c5eb09315b6404dadb1b5ae5f3c7c = L.circleMarker(
-                [23.0, 124.900001525879],
-                {"bubblingMouseEvents": true, "color": "cadetblue", "dashArray": null, "dashOffset": null, "fill": true, "fillColor": "cadetblue", "fillOpacity": 1.0, "fillRule": "evenodd", "lineCap": "round", "lineJoin": "round", "opacity": 1.0, "radius": 5, "stroke": true, "weight": 3}
-            ).addTo(feature_group_4ae72917e2f32ae15e22e0ca7bec5923);
-        
-    
-        var popup_ad652fdaba570323d77048e2b9c4a953 = L.popup({
-  "maxWidth": 300,
-});
-
-        
-            
-                var html_2c3b9cd4681a8a59ceeb4c488f432fdd = $(`<div id="html_2c3b9cd4681a8a59ceeb4c488f432fdd" style="width: 100.0%; height: 100.0%;"><b>NCDR: 颱風路徑</b><br><b>位置：北緯 23.0°, 東經 124.9°</b></div>`)[0];
-                popup_ad652fdaba570323d77048e2b9c4a953.setContent(html_2c3b9cd4681a8a59ceeb4c488f432fdd);
-            
-        
-
-        circle_marker_a18c5eb09315b6404dadb1b5ae5f3c7c.bindPopup(popup_ad652fdaba570323d77048e2b9c4a953)
-        ;
-
-        
-    
-    
-            circle_marker_a18c5eb09315b6404dadb1b5ae5f3c7c.bindTooltip(
-                `<div>
-                     NCDR: 颱風路徑 (北緯 23.0°, 東經 124.9°)
-                 </div>`,
-                {
-  "sticky": true,
-}
-            );
-        
-    
-            var circle_marker_b46597a654f38bb443a4dd222464c390 = L.circleMarker(
-                [26.7000007629395, 124.5],
-                {"bubblingMouseEvents": true, "color": "cadetblue", "dashArray": null, "dashOffset": null, "fill": true, "fillColor": "cadetblue", "fillOpacity": 1.0, "fillRule": "evenodd", "lineCap": "round", "lineJoin": "round", "opacity": 1.0, "radius": 5, "stroke": true, "weight": 3}
-            ).addTo(feature_group_4ae72917e2f32ae15e22e0ca7bec5923);
-        
-    
-        var popup_a1adaf34e87bdab548a2233e0ca59e9f = L.popup({
-  "maxWidth": 300,
-});
-
-        
-            
-                var html_408ec60827c9c9d991e46916566620d6 = $(`<div id="html_408ec60827c9c9d991e46916566620d6" style="width: 100.0%; height: 100.0%;"><b>NCDR: 颱風路徑</b><br><b>位置：北緯 26.7°, 東經 124.5°</b></div>`)[0];
-                popup_a1adaf34e87bdab548a2233e0ca59e9f.setContent(html_408ec60827c9c9d991e46916566620d6);
-            
-        
-
-        circle_marker_b46597a654f38bb443a4dd222464c390.bindPopup(popup_a1adaf34e87bdab548a2233e0ca59e9f)
-        ;
-
-        
-    
-    
-            circle_marker_b46597a654f38bb443a4dd222464c390.bindTooltip(
-                `<div>
-                     NCDR: 颱風路徑 (北緯 26.7°, 東經 124.5°)
-                 </div>`,
-                {
-  "sticky": true,
-}
-            );
-        
-    
-            var circle_marker_59c0342e0b3bc899386ed0fef1c9a5c0 = L.circleMarker(
-                [31.7999992370605, 128.5],
-                {"bubblingMouseEvents": true, "color": "cadetblue", "dashArray": null, "dashOffset": null, "fill": true, "fillColor": "cadetblue", "fillOpacity": 1.0, "fillRule": "evenodd", "lineCap": "round", "lineJoin": "round", "opacity": 1.0, "radius": 5, "stroke": true, "weight": 3}
-            ).addTo(feature_group_4ae72917e2f32ae15e22e0ca7bec5923);
-        
-    
-        var popup_62e8e98c6c2badc017d16a8955ac1d72 = L.popup({
-  "maxWidth": 300,
-});
-
-        
-            
-                var html_2455d24692dceea3592bd13280aa0a1d = $(`<div id="html_2455d24692dceea3592bd13280aa0a1d" style="width: 100.0%; height: 100.0%;"><b>NCDR: 颱風路徑</b><br><b>位置：北緯 31.8°, 東經 128.5°</b></div>`)[0];
-                popup_62e8e98c6c2badc017d16a8955ac1d72.setContent(html_2455d24692dceea3592bd13280aa0a1d);
-            
-        
-
-        circle_marker_59c0342e0b3bc899386ed0fef1c9a5c0.bindPopup(popup_62e8e98c6c2badc017d16a8955ac1d72)
-        ;
-
-        
-    
-    
-            circle_marker_59c0342e0b3bc899386ed0fef1c9a5c0.bindTooltip(
-                `<div>
-                     NCDR: 颱風路徑 (北緯 31.8°, 東經 128.5°)
-                 </div>`,
-                {
-  "sticky": true,
-}
-            );
-        
-    
-            var poly_line_28cbdfc4f252b8098ebc68672ff9ac43 = L.polyline(
-                [[16.0, 135.6], [18.0, 130.4], [20.8, 126.6], [23.0, 124.9], [26.7, 124.5], [31.8, 128.5]],
-                {"bubblingMouseEvents": true, "color": "red", "dashArray": null, "dashOffset": null, "fill": false, "fillColor": "red", "fillOpacity": 0.2, "fillRule": "evenodd", "lineCap": "round", "lineJoin": "round", "noClip": false, "opacity": 1.0, "smoothFactor": 1.0, "stroke": true, "weight": 4}
-            ).addTo(feature_group_4ae72917e2f32ae15e22e0ca7bec5923);
-        
-    
-            poly_line_28cbdfc4f252b8098ebc68672ff9ac43.bindTooltip(
-                `<div>
-                     <b>NCDR: CWA</b>
-                 </div>`,
-                {
-  "sticky": true,
-}
-            );
-        
-    
-            var circle_marker_d73493db9edeccb1d68a4d0af083333e = L.circleMarker(
-                [16.0, 135.699996948242],
-                {"bubblingMouseEvents": true, "color": "purple", "dashArray": null, "dashOffset": null, "fill": true, "fillColor": "purple", "fillOpacity": 1.0, "fillRule": "evenodd", "lineCap": "round", "lineJoin": "round", "opacity": 1.0, "radius": 5, "stroke": true, "weight": 3}
-            ).addTo(feature_group_4ae72917e2f32ae15e22e0ca7bec5923);
-        
-    
-        var popup_b319b0f3802f18b5be48512f3a936f62 = L.popup({
-  "maxWidth": 300,
-});
-
-        
-            
-                var html_a0cd012a4b49b3496f7a8968503ac791 = $(`<div id="html_a0cd012a4b49b3496f7a8968503ac791" style="width: 100.0%; height: 100.0%;"><b>NCDR: KMA發佈時間:10/20 08</b><br><b>位置：北緯 16.0°, 東經 135.7°</b></div>`)[0];
-                popup_b319b0f3802f18b5be48512f3a936f62.setContent(html_a0cd012a4b49b3496f7a8968503ac791);
-            
-        
-
-        circle_marker_d73493db9edeccb1d68a4d0af083333e.bindPopup(popup_b319b0f3802f18b5be48512f3a936f62)
-        ;
-
-        
-    
-    
-            circle_marker_d73493db9edeccb1d68a4d0af083333e.bindTooltip(
-                `<div>
-                     NCDR: KMA發佈時間:10/20 08 (北緯 16.0°, 東經 135.7°)
-                 </div>`,
-                {
-  "sticky": true,
-}
-            );
-        
-    
-            var circle_marker_bb1db4d7b742cb2b767dd79d92e8c8cb = L.circleMarker(
-                [18.3999996185303, 130.199996948242],
-                {"bubblingMouseEvents": true, "color": "cadetblue", "dashArray": null, "dashOffset": null, "fill": true, "fillColor": "cadetblue", "fillOpacity": 1.0, "fillRule": "evenodd", "lineCap": "round", "lineJoin": "round", "opacity": 1.0, "radius": 5, "stroke": true, "weight": 3}
-            ).addTo(feature_group_4ae72917e2f32ae15e22e0ca7bec5923);
-        
-    
-        var popup_cdf89d6424c781b349a3f5e2e8c8562e = L.popup({
-  "maxWidth": 300,
-});
-
-        
-            
-                var html_c2e2465de52adca1de11665a4d7c6fe3 = $(`<div id="html_c2e2465de52adca1de11665a4d7c6fe3" style="width: 100.0%; height: 100.0%;"><b>NCDR: 颱風路徑</b><br><b>位置：北緯 18.4°, 東經 130.2°</b></div>`)[0];
-                popup_cdf89d6424c781b349a3f5e2e8c8562e.setContent(html_c2e2465de52adca1de11665a4d7c6fe3);
-            
-        
-
-        circle_marker_bb1db4d7b742cb2b767dd79d92e8c8cb.bindPopup(popup_cdf89d6424c781b349a3f5e2e8c8562e)
-        ;
-
-        
-    
-    
-            circle_marker_bb1db4d7b742cb2b767dd79d92e8c8cb.bindTooltip(
-                `<div>
-                     NCDR: 颱風路徑 (北緯 18.4°, 東經 130.2°)
-                 </div>`,
-                {
-  "sticky": true,
-}
-            );
-        
-    
-            var circle_marker_825b845944115fbad78fc5b3c981fc5f = L.circleMarker(
-                [20.3999996185303, 126.599998474121],
-                {"bubblingMouseEvents": true, "color": "cadetblue", "dashArray": null, "dashOffset": null, "fill": true, "fillColor": "cadetblue", "fillOpacity": 1.0, "fillRule": "evenodd", "lineCap": "round", "lineJoin": "round", "opacity": 1.0, "radius": 5, "stroke": true, "weight": 3}
-            ).addTo(feature_group_4ae72917e2f32ae15e22e0ca7bec5923);
-        
-    
-        var popup_4e930f8cc35faa15abc2dbff5b6216f3 = L.popup({
-  "maxWidth": 300,
-});
-
-        
-            
-                var html_aae610f583f78172f0a46502e60ba42c = $(`<div id="html_aae610f583f78172f0a46502e60ba42c" style="width: 100.0%; height: 100.0%;"><b>NCDR: 颱風路徑</b><br><b>位置：北緯 20.4°, 東經 126.6°</b></div>`)[0];
-                popup_4e930f8cc35faa15abc2dbff5b6216f3.setContent(html_aae610f583f78172f0a46502e60ba42c);
-            
-        
-
-        circle_marker_825b845944115fbad78fc5b3c981fc5f.bindPopup(popup_4e930f8cc35faa15abc2dbff5b6216f3)
-        ;
-
-        
-    
-    
-            circle_marker_825b845944115fbad78fc5b3c981fc5f.bindTooltip(
-                `<div>
-                     NCDR: 颱風路徑 (北緯 20.4°, 東經 126.6°)
-                 </div>`,
-                {
-  "sticky": true,
-}
-            );
-        
-    
-            var circle_marker_1c06e71b7c98f9e6e7ac61fa448da427 = L.circleMarker(
-                [22.3999996185303, 124.099998474121],
-                {"bubblingMouseEvents": true, "color": "cadetblue", "dashArray": null, "dashOffset": null, "fill": true, "fillColor": "cadetblue", "fillOpacity": 1.0, "fillRule": "evenodd", "lineCap": "round", "lineJoin": "round", "opacity": 1.0, "radius": 5, "stroke": true, "weight": 3}
-            ).addTo(feature_group_4ae72917e2f32ae15e22e0ca7bec5923);
-        
-    
-        var popup_68408540329f6212dd68c69b660f274a = L.popup({
-  "maxWidth": 300,
-});
-
-        
-            
-                var html_4b029ba1d17cebad8b8dfd1d3346dc22 = $(`<div id="html_4b029ba1d17cebad8b8dfd1d3346dc22" style="width: 100.0%; height: 100.0%;"><b>NCDR: 颱風路徑</b><br><b>位置：北緯 22.4°, 東經 124.1°</b></div>`)[0];
-                popup_68408540329f6212dd68c69b660f274a.setContent(html_4b029ba1d17cebad8b8dfd1d3346dc22);
-            
-        
-
-        circle_marker_1c06e71b7c98f9e6e7ac61fa448da427.bindPopup(popup_68408540329f6212dd68c69b660f274a)
-        ;
-
-        
-    
-    
-            circle_marker_1c06e71b7c98f9e6e7ac61fa448da427.bindTooltip(
-                `<div>
-                     NCDR: 颱風路徑 (北緯 22.4°, 東經 124.1°)
-                 </div>`,
-                {
-  "sticky": true,
-}
-            );
-        
-    
-            var circle_marker_e79b06898b45eff41b398cb3eefc3877 = L.circleMarker(
-                [25.2999992370605, 121.900001525879],
-                {"bubblingMouseEvents": true, "color": "cadetblue", "dashArray": null, "dashOffset": null, "fill": true, "fillColor": "cadetblue", "fillOpacity": 1.0, "fillRule": "evenodd", "lineCap": "round", "lineJoin": "round", "opacity": 1.0, "radius": 5, "stroke": true, "weight": 3}
-            ).addTo(feature_group_4ae72917e2f32ae15e22e0ca7bec5923);
-        
-    
-        var popup_356e30cfcceb43dbfb5543d0201d9d2f = L.popup({
-  "maxWidth": 300,
-});
-
-        
-            
-                var html_f37003ea196ee2cf9c7795080e6f07e6 = $(`<div id="html_f37003ea196ee2cf9c7795080e6f07e6" style="width: 100.0%; height: 100.0%;"><b>NCDR: 颱風路徑</b><br><b>位置：北緯 25.3°, 東經 121.9°</b></div>`)[0];
-                popup_356e30cfcceb43dbfb5543d0201d9d2f.setContent(html_f37003ea196ee2cf9c7795080e6f07e6);
-            
-        
-
-        circle_marker_e79b06898b45eff41b398cb3eefc3877.bindPopup(popup_356e30cfcceb43dbfb5543d0201d9d2f)
-        ;
-
-        
-    
-    
-            circle_marker_e79b06898b45eff41b398cb3eefc3877.bindTooltip(
-                `<div>
-                     NCDR: 颱風路徑 (北緯 25.3°, 東經 121.9°)
-                 </div>`,
-                {
-  "sticky": true,
-}
-            );
-        
-    
-            var circle_marker_f99fc276e78283a9f24cc8fc0951c13d = L.circleMarker(
-                [27.7999992370605, 121.5],
-                {"bubblingMouseEvents": true, "color": "cadetblue", "dashArray": null, "dashOffset": null, "fill": true, "fillColor": "cadetblue", "fillOpacity": 1.0, "fillRule": "evenodd", "lineCap": "round", "lineJoin": "round", "opacity": 1.0, "radius": 5, "stroke": true, "weight": 3}
-            ).addTo(feature_group_4ae72917e2f32ae15e22e0ca7bec5923);
-        
-    
-        var popup_8222abb396c1c720956927c96b8d27d8 = L.popup({
-  "maxWidth": 300,
-});
-
-        
-            
-                var html_b76075bf1233aad2bb1806fd6ce42906 = $(`<div id="html_b76075bf1233aad2bb1806fd6ce42906" style="width: 100.0%; height: 100.0%;"><b>NCDR: 颱風路徑</b><br><b>位置：北緯 27.8°, 東經 121.5°</b></div>`)[0];
-                popup_8222abb396c1c720956927c96b8d27d8.setContent(html_b76075bf1233aad2bb1806fd6ce42906);
-            
-        
-
-        circle_marker_f99fc276e78283a9f24cc8fc0951c13d.bindPopup(popup_8222abb396c1c720956927c96b8d27d8)
-        ;
-
-        
-    
-    
-            circle_marker_f99fc276e78283a9f24cc8fc0951c13d.bindTooltip(
-                `<div>
-                     NCDR: 颱風路徑 (北緯 27.8°, 東經 121.5°)
-                 </div>`,
-                {
-  "sticky": true,
-}
-            );
-        
-    
-            var poly_line_dc8749cfd7674425ca93e98ba342c77d = L.polyline(
-                [[16.0, 135.7], [18.4, 130.2], [20.4, 126.6], [22.4, 124.1], [25.3, 121.9], [27.8, 121.5]],
-                {"bubblingMouseEvents": true, "color": "purple", "dashArray": null, "dashOffset": null, "fill": false, "fillColor": "purple", "fillOpacity": 0.2, "fillRule": "evenodd", "lineCap": "round", "lineJoin": "round", "noClip": false, "opacity": 1.0, "smoothFactor": 1.0, "stroke": true, "weight": 4}
-            ).addTo(feature_group_4ae72917e2f32ae15e22e0ca7bec5923);
-        
-    
-            poly_line_dc8749cfd7674425ca93e98ba342c77d.bindTooltip(
-                `<div>
-                     <b>NCDR: KMA</b>
-                 </div>`,
-                {
-  "sticky": true,
-}
-            );
-        
-    
-            feature_group_4ae72917e2f32ae15e22e0ca7bec5923.addTo(map_218e4b5e0c6f850f457d20905e182aed);
-        
-    
-            var layer_control_10e5cc473279a8ba4d1be8e21331972e_layers = {
-                base_layers : {
-                    "https://server.arcgisonline.com/arcgis/rest/services/world_street_map/mapserver/tile/{z}/{y}/{x}" : tile_layer_0115f4fa5d760357b7aa0f73792a5342,
-                },
-                overlays :  {
-                    "3. CWA \u66b4\u98a8\u5708\u4fb5\u8972\u6a5f\u7387 (W-C0034-003)" : feature_group_d1a2e4fa8732487f2b9a89c9f081f426,
-                    "2. CWA \u8b66\u5831\u8207\u66b4\u98a8\u5708 (W-C0034-002)" : feature_group_e0961c1a6d0b0ceabd71fcd7377a6f7e,
-                    "1. \u5404\u570b\u9810\u6e2c\u8def\u5f91 (NCDR)" : feature_group_4ae72917e2f32ae15e22e0ca7bec5923,
-                },
-            };
-            let layer_control_10e5cc473279a8ba4d1be8e21331972e = L.control.layers(
-                layer_control_10e5cc473279a8ba4d1be8e21331972e_layers.base_layers,
-                layer_control_10e5cc473279a8ba4d1be8e21331972e_layers.overlays,
-                {
-  "position": "topright",
-  "collapsed": false,
-  "autoZIndex": true,
-}
-            ).addTo(map_218e4b5e0c6f850f457d20905e182aed);
-
-        
-</script>
-</html>
+"""
+m.get_root().html.add_child(folium.Element(legend_html))
+
+# 圖層疊加順序：機率區 -> 警報/暴風圈/歷史軌跡 -> 各國預測路徑最上層
+fg_cwa_wsp.add_to(m)
+fg_cwa_route.add_to(m)
+fg_ncdr.add_to(m)
+folium.LayerControl(position="topright", collapsed=False).add_to(m)
+
+output_file = "index.html"
+m.save(output_file)
+print(f"地圖視覺化升級完成，已儲存至：{output_file}")
