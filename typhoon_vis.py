@@ -19,7 +19,7 @@ m = folium.Map(
     tiles="https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}",
     attr="Esri World Street Map",
 )
-   
+
 # 2. 建立圖層 (FeatureGroups)
 fg_cwa_wsp = folium.FeatureGroup(name="3. CWA 暴風圈侵襲機率 (W-C0034-003)", show=True)
 fg_cwa_route = folium.FeatureGroup(name="2. CWA 警報與暴風圈 (W-C0034-002)", show=True)
@@ -105,12 +105,10 @@ def parse_and_add_cwa_002(root_elem, target_group):
                 lon, lat = float(parts[0]), float(parts[1])
                 pos_str = f"中心位置：北緯 {lat:.1f}°, 東經 {lon:.1f}°"
                 
-                # 繪製點位標記
                 folium.CircleMarker(location=[lat, lon], radius=4, color="#d9534f", fill=True,
                                     fill_color="#d9534f", fill_opacity=0.9, tooltip=f"{name} ({pos_str})",
                                     popup=folium.Popup(f"<b>{name}</b><br><b>{pos_str}</b><br>{desc}", max_width=300)).add_to(target_group)
                 
-                # 【新增】使用 DivIcon 在地圖上繪製如 CWA 的白底時間標籤
                 if "日" in name or "時" in name or "颱風" in name:
                     folium.map.Marker(
                         [lat, lon],
@@ -232,11 +230,9 @@ try:
         if info_list:
             latest = info_list[0]
             
-            # 1. 取得完整警戒區域 (移除原本的字數截斷)
             areas = [a.get("areaDesc", "") for a in latest.get("area", [])]
             area_str = "、".join(areas) if areas else "無"
             
-            # 2. 深入解析警報詳細內容 (包含注意事項、降雨指引等)
             desc_text = ""
             for sec in latest.get("description", {}).get("section", []):
                 title = sec.get('title', '')
@@ -244,7 +240,6 @@ try:
                 if title and value:
                     desc_text += f"<b style='color:#337ab7;'>[{title}]</b> {value}<br><br>"
             
-            # 3. 組裝豐富的 HTML
             alert_html = f"""
             <h4 style="margin:0 0 5px 0; color:#d9534f;">{latest.get('headline', '颱風警報')}</h4>
             <small>CWA 發布時間：{latest.get('effective', '')}</small><hr style="margin:5px 0;">
@@ -266,7 +261,7 @@ if not alert_html:
 
 # --- 介面面板 ---
 tab_panel_html = f"""
-<div style="position: fixed; bottom: 30px; right: 30px; width: 420px; height: 460px; 
+<div style="position: fixed; bottom: 30px; right: 30px; width: 440px; height: 500px; 
      background-color: white; border:2px solid #337ab7; z-index:9999; font-size:13px;
      padding: 10px; border-radius: 8px; box-shadow: 0 0 10px rgba(0,0,0,0.3); opacity: 0.96;
      display: flex; flex-direction: column;">
@@ -278,14 +273,23 @@ tab_panel_html = f"""
         <i class="fa fa-clock"></i> 系統資料更新時間：<b>{current_time_str}</b>
     </div>
     
-    <div style="display: flex; border-bottom: 2px solid #337ab7; margin-bottom: 8px; font-size:12px;">
-        <button onclick="switchTab('tab-alert')" id="btn-alert" style="flex:1; padding:6px; border:none; background:#337ab7; color:white; font-weight:bold; cursor:pointer; border-radius:4px 4px 0 0;">CWA 動態</button>
-        <button onclick="switchTab('tab-jma')" id="btn-jma" style="flex:1; padding:6px; border:none; background:#eee; color:#333; font-weight:bold; cursor:pointer; border-radius:4px 4px 0 0;">日本(JMA)</button>
-        <button onclick="switchTab('tab-wind')" id="btn-wind" style="flex:1; padding:6px; border:none; background:#eee; color:#333; font-weight:bold; cursor:pointer; border-radius:4px 4px 0 0;">風力預測</button>
-        <button onclick="switchTab('tab-rain')" id="btn-rain" style="flex:1; padding:6px; border:none; background:#eee; color:#333; font-weight:bold; cursor:pointer; border-radius:4px 4px 0 0;">雨量預測</button>
+    <div style="display: flex; border-bottom: 2px solid #337ab7; margin-bottom: 8px; font-size:12px; flex-wrap: wrap; gap: 4px; padding-bottom: 4px;">
+        <button onclick="switchTab('tab-alert')" id="btn-alert" style="flex:1 1 auto; padding:6px; border:none; background:#337ab7; color:white; font-weight:bold; cursor:pointer; border-radius:4px;">CWA 動態</button>
+        <button onclick="switchTab('tab-cwa-web')" id="btn-cwa-web" style="flex:1 1 auto; padding:6px; border:none; background:#eee; color:#333; font-weight:bold; cursor:pointer; border-radius:4px;">CWA 官網</button>
+        <button onclick="switchTab('tab-jma')" id="btn-jma" style="flex:1 1 auto; padding:6px; border:none; background:#eee; color:#333; font-weight:bold; cursor:pointer; border-radius:4px;">日本(JMA)</button>
+        <button onclick="switchTab('tab-wind')" id="btn-wind" style="flex:1 1 auto; padding:6px; border:none; background:#eee; color:#333; font-weight:bold; cursor:pointer; border-radius:4px;">風力預測</button>
+        <button onclick="switchTab('tab-rain')" id="btn-rain" style="flex:1 1 auto; padding:6px; border:none; background:#eee; color:#333; font-weight:bold; cursor:pointer; border-radius:4px;">雨量預測</button>
     </div>
 
     <div id="tab-alert" class="tab-content" style="overflow-y:auto; flex:1;">{alert_html}</div>
+    
+    <div id="tab-cwa-web" class="tab-content" style="display:none; overflow-y:auto; flex:1; position: relative;">
+        <div style="margin-bottom: 5px; text-align: right;">
+            <a href="https://www.cwa.gov.tw/V8/C/P/Typhoon/TY_NEWS.html" target="_blank" style="font-size:12px; color:#337ab7; text-decoration:underline;">&#8599; 另開新視窗檢視</a>
+        </div>
+        <iframe src="https://www.cwa.gov.tw/V8/C/P/Typhoon/TY_NEWS.html" width="100%" height="90%" style="border:1px solid #ccc; border-radius: 4px;"></iframe>
+    </div>
+
     <div id="tab-jma" class="tab-content" style="display:none; overflow-y:auto; flex:1;">{jma_html}</div>
     <div id="tab-wind" class="tab-content" style="display:none; overflow-y:auto; flex:1;"><p style='color:gray;'>無最新風力警報資料</p></div>
     <div id="tab-rain" class="tab-content" style="display:none; overflow-y:auto; flex:1;"><p style='color:gray;'>無最新雨量警報資料</p></div>
@@ -296,7 +300,7 @@ function switchTab(tabId) {{
     document.querySelectorAll('.tab-content').forEach(el => el.style.display = 'none');
     document.getElementById(tabId).style.display = 'block';
     
-    ['alert', 'jma', 'wind', 'rain'].forEach(id => {{
+    ['alert', 'cwa-web', 'jma', 'wind', 'rain'].forEach(id => {{
         let btn = document.getElementById('btn-' + id);
         if('tab-' + id === tabId) {{
             btn.style.background = '#337ab7';
@@ -338,4 +342,4 @@ folium.LayerControl(position="topright", collapsed=False).add_to(m)
 
 output_file = "index.html"
 m.save(output_file)
-print(f"地圖已成功更新，已加入時間標籤與詳細警報內容：{output_file}")
+print(f"地圖已成功更新，已加入 CWA 內嵌網頁：{output_file}")
