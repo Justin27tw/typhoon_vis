@@ -313,6 +313,6 @@ function switchTab(tabId) {{
 m.get_root().html.add_child(folium.Element(tab_panel_html))
 folium.LayerControl(collapsed=False).add_to(m)
 
-output_file = "typhoon_vis.html"
+output_file = "index.html"
 m.save(output_file)
 print(f"地圖已輸出：{output_file}")
