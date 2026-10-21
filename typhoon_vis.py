@@ -9,7 +9,7 @@ import datetime
 import html
 import urllib3
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
-#修改 cmd 
+
 # 從環境變數讀取 CWA API 金鑰，若未設定則提供預設值(僅供本地測試)
 CWA_API_KEY = os.environ.get("CWA_API_KEY")
 
@@ -213,7 +213,6 @@ try:
     if res_005.status_code == 200:
         data_005 = res_005.json()
         
-        # 兼容 datastore 與 fileapi 兩種 JSON 結構
         if "records" in data_005:
             cyclones = data_005["records"].get("TropicalCyclones", {}).get("TropicalCyclone", [])
         else:
@@ -230,7 +229,6 @@ try:
             cwa_td_no = cyc.get("CwaTdNo", "-")
             cwa_ty_no = cyc.get("CwaTyNo", "-")
 
-            # 1. 歷史定位點 (AnalysisData)
             analysis_fixes = cyc.get("AnalysisData", {}).get("Fix", [])
             if isinstance(analysis_fixes, dict): analysis_fixes = [analysis_fixes]
             
@@ -281,7 +279,6 @@ try:
                     tooltip=f"<b>{title_name} 過去分析軌跡</b>"
                 ).add_to(fg_cwa_005)
 
-            # 2. 未來預報點 (ForecastData)
             forecast_fixes = cyc.get("ForecastData", {}).get("Fix", [])
             if isinstance(forecast_fixes, dict): forecast_fixes = [forecast_fixes]
 
@@ -334,7 +331,6 @@ try:
                     tooltip=f"<b>{title_name} CWA 官方預測路徑</b>"
                 ).add_to(fg_cwa_005)
 
-            # 建立側邊欄詳細資訊卡
             if latest_fix:
                 dt_str = latest_fix.get("DateTime", "").replace("T", " ")
                 panel_blocks.append(f"""
@@ -491,65 +487,138 @@ except Exception as e:
 if not alert_html:
     alert_html = """
     <h4 style="margin:0 0 5px 0; color:#0275d8; padding-top: 5px;">即時颱風消息</h4>
-    <p style="color:gray;">目前臺灣氣象署尚未發布颱風警報。可點選「熱帶氣旋動態 (005)」查看西太平洋現存氣旋。</p>
+    <p style="color:gray;">目前臺灣氣象署尚未發布颱風警報。可點選「熱帶氣旋動態」查看西太平洋現存氣旋。</p>
     """
 
-# --- 介面面板 (新增聊天室與搜尋功能) ---
+# --- 介面面板 (RWD 優化) ---
+# 加入 CSS 進行手機端排版偵測，當螢幕小於 768px 時改變資訊面板與圖例的大小及位置
 tab_panel_html = f"""
-<div style="position: fixed; bottom: 30px; right: 30px; width: 460px; height: 530px;
-     background-color: white; border: 2px solid #337ab7; z-index: 9999; font-size: 13px;
-     padding: 10px; border-radius: 8px; box-shadow: 0 0 10px rgba(0,0,0,0.3); opacity: 0.97;
-     display: flex; flex-direction: column; box-sizing: border-box;">
+<style>
+    .info-panel {{
+        position: fixed; 
+        bottom: 30px; 
+        right: 30px; 
+        width: 460px; 
+        height: 530px;
+        background-color: white; 
+        border: 2px solid #337ab7; 
+        z-index: 9999; 
+        font-size: 13px;
+        padding: 10px; 
+        border-radius: 8px; 
+        box-shadow: 0 0 10px rgba(0,0,0,0.3); 
+        opacity: 0.97;
+        display: flex; 
+        flex-direction: column; 
+        box-sizing: border-box;
+    }}
+    .legend-panel {{
+        position: fixed; 
+        bottom: 30px; 
+        left: 30px; 
+        width: 210px; 
+        background-color: white; 
+        border:2px solid gray; 
+        z-index:9999; 
+        font-size:12px;
+        padding: 10px; 
+        border-radius: 6px; 
+        opacity: 0.95;
+    }}
+    .quick-btn {{
+        padding: 4px 8px; 
+        border: 1px solid #ccc; 
+        border-radius: 12px; 
+        background: #fff; 
+        cursor: pointer; 
+        font-size: 11px;
+    }}
+    .tab-btn {{
+        flex: 1 1 auto; 
+        padding: 6px 4px; 
+        border: none; 
+        background: #eee; 
+        color: #333; 
+        font-weight: bold; 
+        cursor: pointer; 
+        border-radius: 4px;
+        font-size: 11px;
+        text-align: center;
+    }}
+    
+    /* 手機版 RWD 樣式 */
+    @media (max-width: 768px) {{
+        .info-panel {{
+            right: 0;
+            bottom: 0;
+            width: 100%;
+            height: 45vh; /* 手機版高度縮小，避免擋住地圖 */
+            border-radius: 12px 12px 0 0;
+            border-bottom: none;
+            border-left: none;
+            border-right: none;
+            opacity: 1;
+        }}
+        .legend-panel {{
+            left: 10px;
+            bottom: 48vh; /* 移至資訊面板上方 */
+            width: auto;
+            max-width: 200px;
+            font-size: 10px;
+            padding: 6px;
+            max-height: 150px;
+            overflow-y: auto;
+        }}
+        .tab-btn {{
+            font-size: 10px;
+            padding: 4px 2px;
+        }}
+    }}
+</style>
 
+<div class="info-panel">
     <div style="display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 6px;">
-        <b style="font-size: 15px; color: #333;">颱風即時動態與各國預測整合</b>
+        <b style="font-size: 15px; color: #333;">颱風即時動態與預測整合</b>
     </div>
     <div style="font-size: 11px; color: #666; margin-bottom: 8px; border-bottom: 1px solid #ccc; padding-bottom: 5px;">
         <i class="fa fa-clock"></i> 系統資料更新時間：<b>{current_time_str}</b>
     </div>
 
-    <!-- 頁籤按鈕 (新增 查詢助手) -->
-    <div style="display: flex; border-bottom: 2px solid #337ab7; margin-bottom: 8px; font-size: 12px; flex-wrap: wrap; gap: 4px; padding-bottom: 4px;">
-        <button onclick="switchTab('tab-chat')" id="btn-chat" style="flex:1 1 auto; padding:6px; border:none; background:#337ab7; color:white; font-weight:bold; cursor:pointer; border-radius:4px;">💬 查詢助手</button>
-        <button onclick="switchTab('tab-cyclone')" id="btn-cyclone" style="flex:1 1 auto; padding:6px; border:none; background:#eee; color:#333; font-weight:bold; cursor:pointer; border-radius:4px;">熱帶氣旋</button>
-        <button onclick="switchTab('tab-alert')" id="btn-alert" style="flex:1 1 auto; padding:6px; border:none; background:#eee; color:#333; font-weight:bold; cursor:pointer; border-radius:4px;">CWA 警報</button>
-        <button onclick="switchTab('tab-jma')" id="btn-jma" style="flex:1 1 auto; padding:6px; border:none; background:#eee; color:#333; font-weight:bold; cursor:pointer; border-radius:4px;">JMA 動態</button>
-        <button onclick="switchTab('tab-wind')" id="btn-wind" style="flex:1 1 auto; padding:6px; border:none; background:#eee; color:#333; font-weight:bold; cursor:pointer; border-radius:4px;">風力/雨量</button>
+    <!-- 頁籤按鈕 -->
+    <div style="display: flex; border-bottom: 2px solid #337ab7; margin-bottom: 8px; flex-wrap: wrap; gap: 4px; padding-bottom: 4px;">
+        <button onclick="switchTab('tab-chat')" id="btn-chat" class="tab-btn" style="background:#337ab7; color:white;">💬 查詢</button>
+        <button onclick="switchTab('tab-cyclone')" id="btn-cyclone" class="tab-btn">熱帶氣旋</button>
+        <button onclick="switchTab('tab-alert')" id="btn-alert" class="tab-btn">CWA 警報</button>
+        <button onclick="switchTab('tab-jma')" id="btn-jma" class="tab-btn">JMA 動態</button>
+        <button onclick="switchTab('tab-wind')" id="btn-wind" class="tab-btn">風力/雨量</button>
     </div>
 
     <!-- 聊天室與搜尋分頁 -->
     <div id="tab-chat" class="tab-content" style="display:flex; flex-direction:column; flex:1; overflow:hidden;">
-        <!-- 聊天對話框 -->
         <div id="chat-history" style="flex:1; background:#f9f9f9; padding:10px; overflow-y:auto; border-radius:4px; margin-bottom:8px; border:1px solid #ddd;">
             <div style="margin-bottom:12px;">
                 <b style="color:#337ab7;">🤖 系統助理：</b><br>
                 <span style="background:#eef; padding:6px 10px; border-radius:8px; display:inline-block; margin-top:4px;">
-                    您好！您可以輸入關鍵字，或點選下方快捷按鈕查詢颱風資訊。
+                    您好！請點選下方按鈕查詢颱風資訊。
                 </span>
             </div>
         </div>
-        <!-- 快捷查詢圖卡 (Quick actions) -->
         <div style="margin-bottom:8px; display:flex; gap:6px; flex-wrap:wrap;">
-            <button onclick="sendQuery('最新警報')" style="padding:4px 8px; border:1px solid #ccc; border-radius:12px; background:#fff; cursor:pointer; font-size:11px; color:#d9534f;">🚨 最新警報</button>
-            <button onclick="sendQuery('颱風動態')" style="padding:4px 8px; border:1px solid #ccc; border-radius:12px; background:#fff; cursor:pointer; font-size:11px; color:#e65100;">🌀 颱風動態</button>
-            <button onclick="sendQuery('風力預測')" style="padding:4px 8px; border:1px solid #ccc; border-radius:12px; background:#fff; cursor:pointer; font-size:11px; color:#5bc0de;">💨 風力預測</button>
-            <button onclick="sendQuery('雨量預測')" style="padding:4px 8px; border:1px solid #ccc; border-radius:12px; background:#fff; cursor:pointer; font-size:11px; color:#0275d8;">☔ 雨量預測</button>
-        </div>
-        <!-- 搜尋輸入欄 -->
-        <div style="display:flex; gap:4px;">
-            <input type="text" id="chat-input" placeholder="輸入關鍵字 (如: 警報、颱風)..." style="flex:1; padding:6px; border:1px solid #ccc; border-radius:4px; outline:none;" onkeypress="if(event.key === 'Enter') sendQuery(this.value)">
-            <button onclick="sendQuery(document.getElementById('chat-input').value)" style="padding:6px 12px; background:#337ab7; color:white; border:none; border-radius:4px; cursor:pointer;">送出</button>
+            <button onclick="sendQuery('最新警報')" class="quick-btn" style="color:#d9534f;">🚨 最新警報</button>
+            <button onclick="sendQuery('颱風動態')" class="quick-btn" style="color:#e65100;">🌀 颱風動態</button>
+            <button onclick="sendQuery('風力預測')" class="quick-btn" style="color:#5bc0de;">💨 風力預測</button>
+            <button onclick="sendQuery('雨量預測')" class="quick-btn" style="color:#0275d8;">☔ 雨量預測</button>
         </div>
     </div>
 
-    <!-- 原有資料隱藏容器 (用來儲存供 JS 抓取的資料) -->
+    <!-- 原有資料隱藏容器 -->
     <div id="data-cyclone" style="display:none;">{cyclone_panel_html}</div>
     <div id="data-alert" style="display:none;">{alert_html}</div>
     <div id="data-jma" style="display:none;">{jma_html}</div>
     <div id="data-wind" style="display:none;">{wind_html}</div>
     <div id="data-rain" style="display:none;">{rain_html}</div>
 
-    <!-- 其他顯示面板 -->
+    <!-- 實際內容面板 -->
     <div id="tab-cyclone" class="tab-content" style="display:none; overflow-y:auto; flex:1; line-height:1.6;">{cyclone_panel_html}</div>
     <div id="tab-alert" class="tab-content" style="display:none; overflow-y:auto; flex:1; line-height:1.6;">{alert_html}</div>
     <div id="tab-jma" class="tab-content" style="display:none; overflow-y:auto; flex:1; line-height:1.6;">{jma_html}</div>
@@ -560,7 +629,6 @@ tab_panel_html = f"""
 </div>
 
 <script>
-// 切換分頁邏輯
 function switchTab(tabId) {{
     const tabIds = ['tab-chat', 'tab-cyclone', 'tab-alert', 'tab-jma', 'tab-wind'];
     tabIds.forEach(function(id) {{
@@ -576,20 +644,15 @@ function switchTab(tabId) {{
     }});
 }}
 
-// 聊天室 / 搜尋列邏輯
 function sendQuery(text) {{
     if(!text || !text.trim()) return;
     const history = document.getElementById('chat-history');
     
-    // 1. 顯示使用者輸入
     history.innerHTML += `<div style="margin-bottom:12px; text-align:right;">
         <span style="background:#dcf8c6; padding:6px 10px; border-radius:8px; display:inline-block; max-width:85%; word-break:break-all;">${{text}}</span>
     </div>`;
-    document.getElementById('chat-input').value = '';
 
-    // 2. 判斷關鍵字並產生系統回應
-    let response = "抱歉，我找不到相關資訊。您可以嘗試輸入：「警報」、「颱風動態」、「風力」或「雨量」。";
-    
+    let response = "抱歉，找不到相關資訊。";
     if(text.includes('警報') || text.includes('颱風警報')) {{
         response = document.getElementById('data-alert').innerHTML;
     }} else if(text.includes('颱風') || text.includes('動態') || text.includes('氣旋')) {{
@@ -602,7 +665,6 @@ function sendQuery(text) {{
         response = document.getElementById('data-jma').innerHTML;
     }}
 
-    // 3. 顯示系統回覆
     history.innerHTML += `<div style="margin-bottom:12px; text-align:left;">
         <b style="color:#337ab7; font-size:12px;">🤖 系統助理：</b><br>
         <span style="background:#eef; padding:8px 10px; border-radius:8px; display:inline-block; max-width:90%; overflow-x:auto; line-height:1.5;">
@@ -610,17 +672,14 @@ function sendQuery(text) {{
         </span>
     </div>`;
     
-    // 捲動到底部
     history.scrollTop = history.scrollHeight;
 }}
 </script>
 """
 
-# 圖例
+# 圖例 (加入 CSS Class 進行 RWD 控制)
 legend_html = """
-<div style="position: fixed; bottom: 30px; left: 30px; width: 210px; 
-     background-color: white; border:2px solid gray; z-index:9999; font-size:12px;
-     padding: 10px; border-radius: 6px; opacity: 0.95;">
+<div class="legend-panel">
   <b>圖層路徑圖例</b><br>
   <span style="color:#e65100; font-weight:bold;">- - -</span> CWA (005) 歷史分析軌跡<br>
   <span style="color:#c2185b; font-weight:bold;">———</span> CWA (005) 官方預測路徑<br>
@@ -649,4 +708,4 @@ folium.LayerControl(position="topright", collapsed=False).add_to(m)
 
 output_file = "index.html"
 m.save(output_file)
-print(f"地圖已成功更新，W-C0034-005 熱帶氣旋分析與預報資料已加入：{output_file}")
+print(f"地圖已成功更新，已加入 RWD 手機版響應式排版支援：{output_file}")
