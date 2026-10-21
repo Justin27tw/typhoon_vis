@@ -15,15 +15,16 @@ current_time_str = (datetime.datetime.utcnow() + datetime.timedelta(hours=8)).st
 
 # 1. 初始化 Folium 互動地圖
 m = folium.Map(
-    location=[23.8, 121.0],
-    zoom_start=6,
+    location=[20.0, 130.0],
+    zoom_start=5,
     tiles="https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}",
     attr="Esri World Street Map",
 )
 
 # 2. 建立圖層 (FeatureGroups)
-fg_cwa_wsp = folium.FeatureGroup(name="3. CWA 暴風圈侵襲機率 (W-C0034-003)", show=True)
-fg_cwa_route = folium.FeatureGroup(name="2. CWA 警報與暴風圈 (W-C0034-002)", show=True)
+fg_cwa_wsp = folium.FeatureGroup(name="4. CWA 暴風圈侵襲機率 (W-C0034-003)", show=False)
+fg_cwa_route = folium.FeatureGroup(name="3. CWA 警報與暴風圈 (W-C0034-002)", show=True)
+fg_cwa_005 = folium.FeatureGroup(name="2. CWA 熱帶氣旋分析預報 (W-C0034-005)", show=True)
 fg_ncdr = folium.FeatureGroup(name="1. 各國預測路徑 (NCDR)", show=True)
 
 ns = {"kml": "http://www.opengis.net/kml/2.2"}
@@ -110,7 +111,6 @@ def parse_and_add_cwa_002(root_elem, target_group):
                                     fill_color="#d9534f", fill_opacity=0.9, tooltip=f"{name} ({pos_str})",
                                     popup=folium.Popup(f"<b>{name}</b><br><b>{pos_str}</b><br>{desc}", max_width=300)).add_to(target_group)
                 
-                # 使用 DivIcon 繪製白底時間標籤
                 if "日" in name or "時" in name or "颱風" in name:
                     folium.map.Marker(
                         [lat, lon],
@@ -171,7 +171,7 @@ if ncdr_root is not None:
             path = [[float(c.split(",")[1]), float(c.split(",")[0])]
                     for c in line_coords.text.strip().split() if len(c.split(",")) >= 2]
             if path:
-                folium.PolyLine(locations=path, color=color, weight=4, opacity=1.0, tooltip=f"<b>NCDR: {name}</b>").add_to(fg_ncdr)
+                folium.PolyLine(locations=path, color=color, weight=4, opacity=0.9, tooltip=f"<b>NCDR: {name}</b>").add_to(fg_ncdr)
 
         point_coords = pm.find(".//kml:Point/kml:coordinates", ns)
         if point_coords is not None and point_coords.text:
@@ -183,7 +183,178 @@ if ncdr_root is not None:
                                     tooltip=f"NCDR: {name} (北緯 {lat:.1f}°, 東經 {lon:.1f}°)",
                                     popup=folium.Popup(f"<b>NCDR: {name}</b><br><b>位置：北緯 {lat:.1f}°, 東經 {lon:.1f}°</b>", max_width=300)).add_to(fg_ncdr)
 
-# --- [圖層 2 & 3] CWA KMZ 圖資 ---
+# --- [圖層 2] CWA W-C0034-005 熱帶氣旋詳細定位與預報 ---
+print("正在讀取 CWA 西北太平洋及南海熱帶氣旋資料 (W-C0034-005)...")
+cwa_005_url = f"https://opendata.cwa.gov.tw/api/v1/rest/datastore/W-C0034-005?Authorization={CWA_API_KEY}"
+cyclone_panel_html = ""
+
+def extract_lang_text(item, preferred_lang="zh-hant"):
+    if not item: return "無"
+    if isinstance(item, list):
+        for entry in item:
+            if entry.get("@lang") == preferred_lang:
+                return entry.get("#text", "無")
+        return item[0].get("#text", "無")
+    elif isinstance(item, dict):
+        return item.get("#text", "無")
+    return str(item)
+
+def format_radius(circle_obj):
+    if not circle_obj: return "無"
+    if isinstance(circle_obj, dict):
+        return f"{circle_obj.get('Radius', '未知')} 公里"
+    return f"{circle_obj} 公里"
+
+try:
+    res_005 = requests.get(cwa_005_url, timeout=15)
+    if res_005.status_code == 200:
+        data_005 = res_005.json()
+        cyclones = data_005.get("cwaopendata", {}).get("Dataset", {}).get("TropicalCyclones", {}).get("TropicalCyclone", [])
+        if isinstance(cyclones, dict):
+            cyclones = [cyclones]
+
+        panel_blocks = []
+        for cyc in cyclones:
+            name_en = cyc.get("TyphoonName", "未命名")
+            name_zh = cyc.get("CwaTyphoonName", "")
+            title_name = f"{name_zh} ({name_en})" if name_zh else name_en
+            cwa_td_no = cyc.get("CwaTdNo", "-")
+            cwa_ty_no = cyc.get("CwaTyNo", "-")
+
+            # 1. 歷史定位點 (AnalysisData)
+            analysis_fixes = cyc.get("AnalysisData", {}).get("Fix", [])
+            if isinstance(analysis_fixes, dict): analysis_fixes = [analysis_fixes]
+            
+            history_pts = []
+            latest_fix = None
+            for fix in analysis_fixes:
+                lat = float(fix.get("CoordinateLatitude"))
+                lon = float(fix.get("CoordinateLongitude"))
+                history_pts.append([lat, lon])
+                latest_fix = fix
+                
+                dt = fix.get("DateTime", "").replace("T", " ")
+                r15 = format_radius(fix.get("Circle15ms"))
+                r25 = format_radius(fix.get("Circle25ms"))
+                mv_pred = extract_lang_text(fix.get("MovingPrediction"))
+                
+                popup_content = f"""
+                <div style='font-size:12px; line-height:1.5;'>
+                    <b style='color:#b52b27; font-size:13px;'>🌀 {title_name} - 過去定位點</b><br>
+                    <b>定位時間：</b>{dt}<br>
+                    <b>中心位置：</b>北緯 {lat}° / 東經 {lon}°<br>
+                    <b>中心氣壓：</b>{fix.get('Pressure', '-')} hPa<br>
+                    <b>最大風速：</b>{fix.get('MaxWindSpeed', '-')} m/s (陣風: {fix.get('MaxGustSpeed', '-')} m/s)<br>
+                    <b>移速/移向：</b>{fix.get('MovingSpeed', '-')} km/h，朝 {fix.get('MovingDirection', '-')} 方向<br>
+                    <b>七級風暴風半徑：</b>{r15}<br>
+                    <b>十級風暴風半徑：</b>{r25}<br>
+                    <b>動態預測：</b>{mv_pred}
+                </div>
+                """
+                folium.CircleMarker(
+                    location=[lat, lon],
+                    radius=4,
+                    color="#e65100",
+                    fill=True,
+                    fill_color="#ff9800",
+                    fill_opacity=0.85,
+                    tooltip=f"{title_name} 定位: {dt}",
+                    popup=folium.Popup(popup_content, max_width=320)
+                ).add_to(fg_cwa_005)
+
+            if len(history_pts) > 1:
+                folium.PolyLine(
+                    locations=history_pts,
+                    color="#e65100",
+                    weight=3,
+                    dash_array="5, 5",
+                    opacity=0.9,
+                    tooltip=f"<b>{title_name} 過去分析軌跡</b>"
+                ).add_to(fg_cwa_005)
+
+            # 2. 未來預報點 (ForecastData)
+            forecast_fixes = cyc.get("ForecastData", {}).get("Fix", [])
+            if isinstance(forecast_fixes, dict): forecast_fixes = [forecast_fixes]
+
+            forecast_pts = []
+            if latest_fix:
+                forecast_pts.append([float(latest_fix.get("CoordinateLatitude")), float(latest_fix.get("CoordinateLongitude"))])
+
+            for f_fix in forecast_fixes:
+                f_lat = float(f_fix.get("CoordinateLatitude"))
+                f_lon = float(f_fix.get("CoordinateLongitude"))
+                forecast_pts.append([f_lat, f_lon])
+                
+                f_hour = f_fix.get("ForecastHour", "-")
+                init_time = f_fix.get("InitialTime", "").replace("T", " ")
+                r15 = format_radius(f_fix.get("Circle15ms"))
+                r25 = format_radius(f_fix.get("Circle25ms"))
+                prob_r = f_fix.get("Radius70PercentProbability", "無")
+                state_trans = extract_lang_text(f_fix.get("StateTransfer"))
+
+                f_popup = f"""
+                <div style='font-size:12px; line-height:1.5;'>
+                    <b style='color:#c2185b; font-size:13px;'>🔮 {title_name} - {f_hour}小時未來預報</b><br>
+                    <b>起報時間：</b>{init_time}<br>
+                    <b>預測位置：</b>北緯 {f_lat}° / 東經 {f_lon}°<br>
+                    <b>中心氣壓：</b>{f_fix.get('Pressure', '-')} hPa<br>
+                    <b>預估最大風速：</b>{f_fix.get('MaxWindSpeed', '-')} m/s (陣風: {f_fix.get('MaxGustSpeed', '-')} m/s)<br>
+                    <b>預測移速/移向：</b>{f_fix.get('MovingSpeed', '-')} km/h，朝 {f_fix.get('MovingDirection', '-')} 方向<br>
+                    <b>70%機率半徑：</b>{prob_r} 公里<br>
+                    <b>七級/十級半徑：</b>{r15} / {r25}<br>
+                    <b>未來狀態轉變：</b>{state_trans}
+                </div>
+                """
+                folium.CircleMarker(
+                    location=[f_lat, f_lon],
+                    radius=5,
+                    color="#c2185b",
+                    fill=True,
+                    fill_color="#ff4081",
+                    fill_opacity=0.9,
+                    tooltip=f"{title_name} +{f_hour}H預報 (北緯{f_lat}°, 東經{f_lon}°)",
+                    popup=folium.Popup(f_popup, max_width=320)
+                ).add_to(fg_cwa_005)
+
+            if len(forecast_pts) > 1:
+                folium.PolyLine(
+                    locations=forecast_pts,
+                    color="#c2185b",
+                    weight=3.5,
+                    opacity=0.9,
+                    tooltip=f"<b>{title_name} CWA 官方預測路徑</b>"
+                ).add_to(fg_cwa_005)
+
+            # 建立側邊欄詳細資訊卡
+            if latest_fix:
+                dt_str = latest_fix.get("DateTime", "").replace("T", " ")
+                panel_blocks.append(f"""
+                <div style="background-color: #fff9f5; border: 1px solid #ffccbc; border-radius: 6px; padding: 10px; margin-bottom: 10px;">
+                    <b style="font-size: 14px; color: #d84315;">🌀 {title_name}</b> 
+                    <span style="font-size:11px; background:#d84315; color:#fff; padding:1px 5px; border-radius:3px; margin-left:4px;">CWA 編號: {cwa_ty_no}</span>
+                    <hr style="margin: 6px 0; border: none; border-top: 1px dashed #ffab91;">
+                    <div style="font-size: 12px; line-height: 1.6;">
+                        <b>最新定位時間：</b>{dt_str}<br>
+                        <b>中心位置：</b>北緯 {latest_fix.get('CoordinateLatitude')}°, 東經 {latest_fix.get('CoordinateLongitude')}°<br>
+                        <b>中心氣壓：</b>{latest_fix.get('Pressure')} hPa<br>
+                        <b>中心最大風速：</b>{latest_fix.get('MaxWindSpeed')} m/s (陣風: {latest_fix.get('MaxGustSpeed')} m/s)<br>
+                        <b>移動速度/方向：</b>{latest_fix.get('MovingSpeed')} km/h，向 {latest_fix.get('MovingDirection')}<br>
+                        <b>七級風暴風半徑：</b>{format_radius(latest_fix.get('Circle15ms'))}<br>
+                        <b>十級風暴風半徑：</b>{format_radius(latest_fix.get('Circle25ms'))}<br>
+                        <b>預測動態：</b>{extract_lang_text(latest_fix.get('MovingPrediction'))}
+                    </div>
+                </div>
+                """)
+
+        if panel_blocks:
+            cyclone_panel_html = "".join(panel_blocks)
+        else:
+            cyclone_panel_html = "<p style='color:gray; padding:10px;'>目前西北太平洋及南海無活動中的熱帶氣旋紀錄。</p>"
+except Exception as e:
+    print(f"讀取 CWA W-C0034-005 發生錯誤: {e}")
+    cyclone_panel_html = f"<p style='color:red; padding:10px;'>無法解析熱帶氣旋資料: {e}</p>"
+
+# --- [圖層 3 & 4] CWA 警報與侵襲機率圖資 ---
 print("正在讀取 CWA 颱風警報與暴風圈 (W-C0034-002)...")
 cwa_002_url = f"https://opendata.cwa.gov.tw/fileapi/v1/opendataapi/W-C0034-002?Authorization={CWA_API_KEY}&downloadType=WEB&format=KMZ"
 cwa_002_root = fetch_kml_from_kmz(cwa_002_url)
@@ -192,7 +363,6 @@ parse_and_add_cwa_002(cwa_002_root, fg_cwa_route)
 print("正在讀取 CWA 暴風圈侵襲機率 (W-C0034-003)...")
 cwa_003_url = f"https://opendata.cwa.gov.tw/fileapi/v1/opendataapi/W-C0034-003?Authorization={CWA_API_KEY}&downloadType=WEB&format=KMZ"
 parse_and_add_cwa_003(fetch_kml_from_kmz(cwa_003_url), fg_cwa_wsp)
-
 
 # --- 輔助函式：取得 CWA Product XML (用於風雨預測) ---
 def get_cwa_product_xml(api_url):
@@ -246,7 +416,6 @@ def parse_cwa_forecast_xml(xml_content, forecast_type="風力"):
     except Exception as e:
         return f"<p style='color:red; padding:10px;'>解析{forecast_type}預測失敗: {e}</p>"
 
-
 # --- [API 擴充] 風力與雨量預測 ---
 print("正在讀取 CWA 風力預測 (F-C0034-005)...")
 f_005_url = f"https://opendata.cwa.gov.tw/fileapi/v1/opendataapi/F-C0034-005?Authorization={CWA_API_KEY}&downloadType=WEB&format=JSON"
@@ -256,8 +425,7 @@ print("正在讀取 CWA 總雨量預測 (F-C0034-007)...")
 f_007_url = f"https://opendata.cwa.gov.tw/fileapi/v1/opendataapi/F-C0034-007?Authorization={CWA_API_KEY}&downloadType=WEB&format=JSON"
 rain_html = parse_cwa_forecast_xml(get_cwa_product_xml(f_007_url), forecast_type="總雨量")
 
-
-# --- [API 擴充] 日本氣象廳 (JMA) 颱風 JSON API 抓取 ---
+# --- [API 擴充] 日本氣象廳 (JMA) 颱風 JSON API ---
 print("正在讀取 JMA (日本氣象廳) 颱風資料...")
 def fetch_jma_info():
     jma_url = "https://www.jma.go.jp/bosai/typhoon/data/TC.json"
@@ -276,13 +444,12 @@ def fetch_jma_info():
             name_kana = tc.get('name', {}).get('kana', '')
             time_dt = tc.get('dateTime', '未知時間')
             html_output += f"<li style='margin-bottom:8px;'><b>{name_en} ({name_kana})</b><br><small style='color:#666;'>JMA 更新時間: {time_dt}</small></li>"
-        html_output += "</ul><div style='font-size:11px; color:gray; margin-top:10px; padding-left:10px;'>* 日本氣象廳颱風預測路徑已整合顯示於地圖上(藍色線條)。上方為 JMA 官方 API 即時回傳之活躍颱風列表。</div>"
+        html_output += "</ul>"
         return html_output
     except Exception as e:
         return f"<p style='color:red; padding:10px;'>無法取得 JMA 資訊 (錯誤: {e})</p>"
 
 jma_html = fetch_jma_info()
-
 
 # --- CWA 警報文字解析 ---
 cwa_001_url = f"https://opendata.cwa.gov.tw/api/v1/rest/datastore/W-C0034-001?Authorization={CWA_API_KEY}"
@@ -294,10 +461,8 @@ try:
         info_list = data.get("records", {}).get("info", [])
         if info_list:
             latest = info_list[0]
-            
             areas = [a.get("areaDesc", "") for a in latest.get("area", [])]
             area_str = "、".join(areas) if areas else "無"
-            
             desc_text = ""
             for sec in latest.get("description", {}).get("section", []):
                 title = sec.get('title', '')
@@ -308,12 +473,8 @@ try:
             alert_html = f"""
             <h4 style="margin:0 0 5px 0; color:#d9534f;">{latest.get('headline', '颱風警報')}</h4>
             <small>CWA 發布時間：{latest.get('effective', '')}</small><hr style="margin:5px 0;">
-            <div style="margin-bottom: 10px; font-size: 13px;">
-                <b>【警戒區域】</b>：{area_str}
-            </div>
-            <div style="font-size: 12px; line-height: 1.6; background-color: #f9f9f9; padding: 10px; border-radius: 6px; border-left: 4px solid #d9534f; overflow-wrap: break-word;">
-                {desc_text}
-            </div>
+            <div style="margin-bottom: 10px; font-size: 13px;"><b>【警戒區域】</b>：{area_str}</div>
+            <div style="font-size: 12px; line-height: 1.6; background-color: #f9f9f9; padding: 10px; border-radius: 6px; border-left: 4px solid #d9534f; overflow-wrap: break-word;">{desc_text}</div>
             """
 except Exception as e:
     print(f"解析 CWA 警報時發生錯誤：{e}")
@@ -321,14 +482,14 @@ except Exception as e:
 if not alert_html:
     alert_html = """
     <h4 style="margin:0 0 5px 0; color:#0275d8; padding-top: 5px;">即時颱風消息</h4>
-    <p style="color:gray;">目前臺灣尚未發布颱風警報。請參考地圖上之各國預測路徑及切換其他分頁查看最新動態。</p>
+    <p style="color:gray;">目前臺灣氣象署尚未發布颱風警報。可點選「熱帶氣旋動態 (005)」查看西太平洋現存氣旋。</p>
     """
 
 # --- 介面面板 ---
 tab_panel_html = f"""
-<div style="position: fixed; bottom: 30px; right: 30px; width: 440px; height: 500px;
+<div style="position: fixed; bottom: 30px; right: 30px; width: 460px; height: 530px;
      background-color: white; border: 2px solid #337ab7; z-index: 9999; font-size: 13px;
-     padding: 10px; border-radius: 8px; box-shadow: 0 0 10px rgba(0,0,0,0.3); opacity: 0.96;
+     padding: 10px; border-radius: 8px; box-shadow: 0 0 10px rgba(0,0,0,0.3); opacity: 0.97;
      display: flex; flex-direction: column; box-sizing: border-box;">
 
     <div style="display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 6px;">
@@ -339,39 +500,31 @@ tab_panel_html = f"""
     </div>
 
     <div style="display: flex; border-bottom: 2px solid #337ab7; margin-bottom: 8px; font-size: 12px; flex-wrap: wrap; gap: 4px; padding-bottom: 4px;">
-        <button onclick="switchTab('tab-alert')" id="btn-alert" style="flex:1 1 auto; padding:6px; border:none; background:#337ab7; color:white; font-weight:bold; cursor:pointer; border-radius:4px;">CWA 動態</button>
-        <button onclick="switchTab('tab-cwa-web')" id="btn-cwa-web" style="flex:1 1 auto; padding:6px; border:none; background:#eee; color:#333; font-weight:bold; cursor:pointer; border-radius:4px;">CWA 官網</button>
+        <button onclick="switchTab('tab-cyclone')" id="btn-cyclone" style="flex:1 1 auto; padding:6px; border:none; background:#d84315; color:white; font-weight:bold; cursor:pointer; border-radius:4px;">熱帶氣旋 (005)</button>
+        <button onclick="switchTab('tab-alert')" id="btn-alert" style="flex:1 1 auto; padding:6px; border:none; background:#eee; color:#333; font-weight:bold; cursor:pointer; border-radius:4px;">CWA 警報</button>
         <button onclick="switchTab('tab-jma')" id="btn-jma" style="flex:1 1 auto; padding:6px; border:none; background:#eee; color:#333; font-weight:bold; cursor:pointer; border-radius:4px;">JMA 動態</button>
-        <button onclick="switchTab('tab-jma-web')" id="btn-jma-web" style="flex:1 1 auto; padding:6px; border:none; background:#eee; color:#333; font-weight:bold; cursor:pointer; border-radius:4px;">JMA 官網</button>
         <button onclick="switchTab('tab-wind')" id="btn-wind" style="flex:1 1 auto; padding:6px; border:none; background:#eee; color:#333; font-weight:bold; cursor:pointer; border-radius:4px;">風力</button>
         <button onclick="switchTab('tab-rain')" id="btn-rain" style="flex:1 1 auto; padding:6px; border:none; background:#eee; color:#333; font-weight:bold; cursor:pointer; border-radius:4px;">雨量</button>
+        <button onclick="switchTab('tab-cwa-web')" id="btn-cwa-web" style="flex:1 1 auto; padding:6px; border:none; background:#eee; color:#333; font-weight:bold; cursor:pointer; border-radius:4px;">官網</button>
     </div>
 
-    <div id="tab-alert" class="tab-content" style="display:block; overflow-y:auto; flex:1; line-height:1.6;">{alert_html}</div>
-    
+    <div id="tab-cyclone" class="tab-content" style="display:block; overflow-y:auto; flex:1; line-height:1.6;">{cyclone_panel_html}</div>
+    <div id="tab-alert" class="tab-content" style="display:none; overflow-y:auto; flex:1; line-height:1.6;">{alert_html}</div>
+    <div id="tab-jma" class="tab-content" style="display:none; overflow-y:auto; flex:1; line-height:1.6;">{jma_html}</div>
+    <div id="tab-wind" class="tab-content" style="display:none; overflow-y:auto; flex:1;">{wind_html}</div>
+    <div id="tab-rain" class="tab-content" style="display:none; overflow-y:auto; flex:1;">{rain_html}</div>
+
     <div id="tab-cwa-web" class="tab-content" style="display:none; overflow-y:auto; flex:1; position: relative;">
         <div style="margin-bottom: 5px; text-align: right;">
-            <a href="https://www.cwa.gov.tw/V8/C/P/Typhoon/TY_NEWS.html" target="_blank" style="font-size:12px; color:#337ab7; text-decoration:underline;">&#8599; 另開新視窗檢視</a>
+            <a href="https://www.cwa.gov.tw/V8/C/P/Typhoon/TY_NEWS.html" target="_blank" style="font-size:12px; color:#337ab7; text-decoration:underline;">&#8599; 另開視窗檢視</a>
         </div>
         <iframe src="https://www.cwa.gov.tw/V8/C/P/Typhoon/TY_NEWS.html" width="100%" height="90%" style="border:1px solid #ccc; border-radius: 4px;"></iframe>
     </div>
-
-    <div id="tab-jma" class="tab-content" style="display:none; overflow-y:auto; flex:1; line-height:1.6;">{jma_html}</div>
-    
-    <div id="tab-jma-web" class="tab-content" style="display:none; overflow-y:auto; flex:1; position: relative;">
-        <div style="margin-bottom: 5px; text-align: right;">
-            <a href="https://www.data.jma.go.jp/multi/cyclone/index.html?lang=cn_zt" target="_blank" style="font-size:12px; color:#337ab7; text-decoration:underline;">&#8599; 另開新視窗檢視</a>
-        </div>
-        <iframe src="https://www.data.jma.go.jp/multi/cyclone/index.html?lang=cn_zt" width="100%" height="90%" style="border:1px solid #ccc; border-radius: 4px;"></iframe>
-    </div>
-
-    <div id="tab-wind" class="tab-content" style="display:none; overflow-y:auto; flex:1;">{wind_html}</div>
-    <div id="tab-rain" class="tab-content" style="display:none; overflow-y:auto; flex:1;">{rain_html}</div>
 </div>
 
 <script>
 function switchTab(tabId) {{
-    const tabIds = ['tab-alert', 'tab-cwa-web', 'tab-jma', 'tab-jma-web', 'tab-wind', 'tab-rain'];
+    const tabIds = ['tab-cyclone', 'tab-alert', 'tab-jma', 'tab-wind', 'tab-rain', 'tab-cwa-web'];
     tabIds.forEach(function(id) {{
         const panel = document.getElementById(id);
         const button = document.getElementById('btn-' + id.replace('tab-', ''));
@@ -388,17 +541,19 @@ function switchTab(tabId) {{
 
 # 圖例
 legend_html = """
-<div style="position: fixed; bottom: 30px; left: 30px; width: 180px; 
+<div style="position: fixed; bottom: 30px; left: 30px; width: 210px; 
      background-color: white; border:2px solid gray; z-index:9999; font-size:12px;
      padding: 10px; border-radius: 6px; opacity: 0.95;">
-  <b>各國與 CWA 圖例</b><br>
+  <b>圖層路徑圖例</b><br>
+  <span style="color:#e65100; font-weight:bold;">- - -</span> CWA (005) 歷史分析軌跡<br>
+  <span style="color:#c2185b; font-weight:bold;">———</span> CWA (005) 官方預測路徑<br>
+  <hr style="margin:4px 0;">
   <i class="fa fa-minus" style="color:red"></i> 台灣 (CWA/NCDR)<br>
   <i class="fa fa-minus" style="color:blue"></i> 日本 (JMA)<br>
   <i class="fa fa-minus" style="color:green"></i> 美國 (JTWC)<br>
   <i class="fa fa-minus" style="color:purple"></i> 韓國 (KMA)<br>
   <i class="fa fa-minus" style="color:orange"></i> 中國 (CMA)<br>
-  <span style="color:#d9534f; font-weight:bold;">- - -</span> 颱風歷史移動軌跡<br>
-  <i class="fa fa-square" style="color:#d9534f; opacity:0.6;"></i> CWA 暴風圈/潛勢區<br>
+  <i class="fa fa-square" style="color:#d9534f; opacity:0.6;"></i> CWA 警報暴風圈/潛勢區<br>
   <i class="fa fa-square" style="color:purple; opacity:0.5;"></i> CWA 侵襲機率區
 </div>
 """
@@ -406,9 +561,10 @@ legend_html = """
 m.get_root().html.add_child(folium.Element(tab_panel_html))
 m.get_root().html.add_child(folium.Element(legend_html))
 
-# 圖層疊加順序：機率區 -> 警報與暴風圈 -> NCDR 各國預測
+# 圖層疊加順序
 fg_cwa_wsp.add_to(m)
 fg_cwa_route.add_to(m)
+fg_cwa_005.add_to(m)
 fg_ncdr.add_to(m)
 
 # 顯示地圖右上角的圖層切換控制項
@@ -416,4 +572,4 @@ folium.LayerControl(position="topright", collapsed=False).add_to(m)
 
 output_file = "index.html"
 m.save(output_file)
-print(f"地圖已成功更新，路徑圖層、時間標籤與風雨資訊已全數恢復：{output_file}")
+print(f"地圖已成功更新，W-C0034-005 熱帶氣旋分析與預報資料已加入：{output_file}")
