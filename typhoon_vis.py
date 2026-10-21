@@ -6,7 +6,8 @@ import folium
 import requests
 import datetime
 import html
-
+import urllib3
+urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 # 中央氣象署 (CWA) API 授權碼
 CWA_API_KEY = "CWA-77A723AE-21B7-4AD9-A9DE-661D15AE3823"
 
@@ -45,7 +46,7 @@ def parse_lat_lon(pos_str):
 # 輔助函式：下載並解析 KMZ / KML
 def fetch_kml_from_kmz(url):
     try:
-        res = requests.get(url, timeout=15)
+        res = requests.get(url, timeout=15, verify=False)
         res.raise_for_status()
         if url.lower().endswith("kmz") or res.content[:2] == b"PK":
             with zipfile.ZipFile(io.BytesIO(res.content)) as z:
@@ -206,7 +207,7 @@ def format_radius(circle_obj):
     return f"{circle_obj} 公里"
 
 try:
-    res_005 = requests.get(cwa_005_url, timeout=15)
+    res_005 = requests.get(cwa_005_url, timeout=15, verify=False)
     if res_005.status_code == 200:
         data_005 = res_005.json()
         cyclones = data_005.get("cwaopendata", {}).get("Dataset", {}).get("TropicalCyclones", {}).get("TropicalCyclone", [])
@@ -367,7 +368,7 @@ parse_and_add_cwa_003(fetch_kml_from_kmz(cwa_003_url), fg_cwa_wsp)
 # --- 輔助函式：取得 CWA Product XML (用於風雨預測) ---
 def get_cwa_product_xml(api_url):
     try:
-        res = requests.get(api_url, timeout=15)
+        res = requests.get(api_url, timeout=15, verify=False)
         res.raise_for_status()
         product_url = None
         try:
@@ -380,7 +381,7 @@ def get_cwa_product_xml(api_url):
                     product_url = elem.text.strip()
                     break
         if product_url:
-            xml_res = requests.get(product_url, timeout=15)
+            xml_res = requests.get(product_url, timeout=15, verify=False)
             xml_res.raise_for_status()
             return xml_res.content
         else:
@@ -430,7 +431,7 @@ print("正在讀取 JMA (日本氣象廳) 颱風資料...")
 def fetch_jma_info():
     jma_url = "https://www.jma.go.jp/bosai/typhoon/data/TC.json"
     try:
-        res = requests.get(jma_url, timeout=10)
+        res = requests.get(jma_url, timeout=10, verify=False)
         if res.status_code == 404:
             return "<p style='color:green; padding: 10px; font-weight:bold;'>✅ 目前西太平洋無活躍颱風，日本氣象廳 (JMA) 暫無發布警報。</p>"
         res.raise_for_status()
