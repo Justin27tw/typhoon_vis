@@ -210,7 +210,13 @@ try:
     res_005 = requests.get(cwa_005_url, timeout=15, verify=False)
     if res_005.status_code == 200:
         data_005 = res_005.json()
-        cyclones = data_005.get("cwaopendata", {}).get("Dataset", {}).get("TropicalCyclones", {}).get("TropicalCyclone", [])
+        
+        # 修正處：兼容 datastore (records) 與 fileapi (cwaopendata) 兩種 JSON 結構
+        if "records" in data_005:
+            cyclones = data_005["records"].get("TropicalCyclones", {}).get("TropicalCyclone", [])
+        else:
+            cyclones = data_005.get("cwaopendata", {}).get("Dataset", {}).get("TropicalCyclones", {}).get("TropicalCyclone", [])
+            
         if isinstance(cyclones, dict):
             cyclones = [cyclones]
 
