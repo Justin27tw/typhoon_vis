@@ -9,7 +9,7 @@ import datetime
 import html
 import urllib3
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
-
+#修改 cmd 
 # 從環境變數讀取 CWA API 金鑰，若未設定則提供預設值(僅供本地測試)
 CWA_API_KEY = os.environ.get("CWA_API_KEY")
 
