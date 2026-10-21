@@ -1,4 +1,5 @@
 import io
+import os
 import json
 import xml.etree.ElementTree as ET
 import zipfile
@@ -9,8 +10,8 @@ import html
 import urllib3
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
-# 中央氣象署 (CWA) API 授權碼
-CWA_API_KEY = "CWA-77A723AE-21B7-4AD9-A9DE-661D15AE3823"
+# 從環境變數讀取 CWA API 金鑰，若未設定則提供預設值(僅供本地測試)
+CWA_API_KEY = os.environ.get("CWA_API_KEY")
 
 # 取得現在的更新時間 (轉換為台灣時間 UTC+8)
 current_time_str = (datetime.datetime.utcnow() + datetime.timedelta(hours=8)).strftime("%Y-%m-%d %H:%M:%S")
