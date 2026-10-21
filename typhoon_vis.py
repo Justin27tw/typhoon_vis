@@ -8,6 +8,7 @@ import datetime
 import html
 import urllib3
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
+
 # 中央氣象署 (CWA) API 授權碼
 CWA_API_KEY = "CWA-77A723AE-21B7-4AD9-A9DE-661D15AE3823"
 
@@ -211,7 +212,7 @@ try:
     if res_005.status_code == 200:
         data_005 = res_005.json()
         
-        # 修正處：兼容 datastore (records) 與 fileapi (cwaopendata) 兩種 JSON 結構
+        # 兼容 datastore 與 fileapi 兩種 JSON 結構
         if "records" in data_005:
             cyclones = data_005["records"].get("TropicalCyclones", {}).get("TropicalCyclone", [])
         else:
@@ -492,7 +493,7 @@ if not alert_html:
     <p style="color:gray;">目前臺灣氣象署尚未發布颱風警報。可點選「熱帶氣旋動態 (005)」查看西太平洋現存氣旋。</p>
     """
 
-# --- 介面面板 ---
+# --- 介面面板 (新增聊天室與搜尋功能) ---
 tab_panel_html = f"""
 <div style="position: fixed; bottom: 30px; right: 30px; width: 460px; height: 530px;
      background-color: white; border: 2px solid #337ab7; z-index: 9999; font-size: 13px;
@@ -506,42 +507,110 @@ tab_panel_html = f"""
         <i class="fa fa-clock"></i> 系統資料更新時間：<b>{current_time_str}</b>
     </div>
 
+    <!-- 頁籤按鈕 (新增 查詢助手) -->
     <div style="display: flex; border-bottom: 2px solid #337ab7; margin-bottom: 8px; font-size: 12px; flex-wrap: wrap; gap: 4px; padding-bottom: 4px;">
-        <button onclick="switchTab('tab-cyclone')" id="btn-cyclone" style="flex:1 1 auto; padding:6px; border:none; background:#d84315; color:white; font-weight:bold; cursor:pointer; border-radius:4px;">熱帶氣旋 (005)</button>
+        <button onclick="switchTab('tab-chat')" id="btn-chat" style="flex:1 1 auto; padding:6px; border:none; background:#337ab7; color:white; font-weight:bold; cursor:pointer; border-radius:4px;">💬 查詢助手</button>
+        <button onclick="switchTab('tab-cyclone')" id="btn-cyclone" style="flex:1 1 auto; padding:6px; border:none; background:#eee; color:#333; font-weight:bold; cursor:pointer; border-radius:4px;">熱帶氣旋</button>
         <button onclick="switchTab('tab-alert')" id="btn-alert" style="flex:1 1 auto; padding:6px; border:none; background:#eee; color:#333; font-weight:bold; cursor:pointer; border-radius:4px;">CWA 警報</button>
         <button onclick="switchTab('tab-jma')" id="btn-jma" style="flex:1 1 auto; padding:6px; border:none; background:#eee; color:#333; font-weight:bold; cursor:pointer; border-radius:4px;">JMA 動態</button>
-        <button onclick="switchTab('tab-wind')" id="btn-wind" style="flex:1 1 auto; padding:6px; border:none; background:#eee; color:#333; font-weight:bold; cursor:pointer; border-radius:4px;">風力</button>
-        <button onclick="switchTab('tab-rain')" id="btn-rain" style="flex:1 1 auto; padding:6px; border:none; background:#eee; color:#333; font-weight:bold; cursor:pointer; border-radius:4px;">雨量</button>
-        <button onclick="switchTab('tab-cwa-web')" id="btn-cwa-web" style="flex:1 1 auto; padding:6px; border:none; background:#eee; color:#333; font-weight:bold; cursor:pointer; border-radius:4px;">官網</button>
+        <button onclick="switchTab('tab-wind')" id="btn-wind" style="flex:1 1 auto; padding:6px; border:none; background:#eee; color:#333; font-weight:bold; cursor:pointer; border-radius:4px;">風力/雨量</button>
     </div>
 
-    <div id="tab-cyclone" class="tab-content" style="display:block; overflow-y:auto; flex:1; line-height:1.6;">{cyclone_panel_html}</div>
+    <!-- 聊天室與搜尋分頁 -->
+    <div id="tab-chat" class="tab-content" style="display:flex; flex-direction:column; flex:1; overflow:hidden;">
+        <!-- 聊天對話框 -->
+        <div id="chat-history" style="flex:1; background:#f9f9f9; padding:10px; overflow-y:auto; border-radius:4px; margin-bottom:8px; border:1px solid #ddd;">
+            <div style="margin-bottom:12px;">
+                <b style="color:#337ab7;">🤖 系統助理：</b><br>
+                <span style="background:#eef; padding:6px 10px; border-radius:8px; display:inline-block; margin-top:4px;">
+                    您好！您可以輸入關鍵字，或點選下方快捷按鈕查詢颱風資訊。
+                </span>
+            </div>
+        </div>
+        <!-- 快捷查詢圖卡 (Quick actions) -->
+        <div style="margin-bottom:8px; display:flex; gap:6px; flex-wrap:wrap;">
+            <button onclick="sendQuery('最新警報')" style="padding:4px 8px; border:1px solid #ccc; border-radius:12px; background:#fff; cursor:pointer; font-size:11px; color:#d9534f;">🚨 最新警報</button>
+            <button onclick="sendQuery('颱風動態')" style="padding:4px 8px; border:1px solid #ccc; border-radius:12px; background:#fff; cursor:pointer; font-size:11px; color:#e65100;">🌀 颱風動態</button>
+            <button onclick="sendQuery('風力預測')" style="padding:4px 8px; border:1px solid #ccc; border-radius:12px; background:#fff; cursor:pointer; font-size:11px; color:#5bc0de;">💨 風力預測</button>
+            <button onclick="sendQuery('雨量預測')" style="padding:4px 8px; border:1px solid #ccc; border-radius:12px; background:#fff; cursor:pointer; font-size:11px; color:#0275d8;">☔ 雨量預測</button>
+        </div>
+        <!-- 搜尋輸入欄 -->
+        <div style="display:flex; gap:4px;">
+            <input type="text" id="chat-input" placeholder="輸入關鍵字 (如: 警報、颱風)..." style="flex:1; padding:6px; border:1px solid #ccc; border-radius:4px; outline:none;" onkeypress="if(event.key === 'Enter') sendQuery(this.value)">
+            <button onclick="sendQuery(document.getElementById('chat-input').value)" style="padding:6px 12px; background:#337ab7; color:white; border:none; border-radius:4px; cursor:pointer;">送出</button>
+        </div>
+    </div>
+
+    <!-- 原有資料隱藏容器 (用來儲存供 JS 抓取的資料) -->
+    <div id="data-cyclone" style="display:none;">{cyclone_panel_html}</div>
+    <div id="data-alert" style="display:none;">{alert_html}</div>
+    <div id="data-jma" style="display:none;">{jma_html}</div>
+    <div id="data-wind" style="display:none;">{wind_html}</div>
+    <div id="data-rain" style="display:none;">{rain_html}</div>
+
+    <!-- 其他顯示面板 -->
+    <div id="tab-cyclone" class="tab-content" style="display:none; overflow-y:auto; flex:1; line-height:1.6;">{cyclone_panel_html}</div>
     <div id="tab-alert" class="tab-content" style="display:none; overflow-y:auto; flex:1; line-height:1.6;">{alert_html}</div>
     <div id="tab-jma" class="tab-content" style="display:none; overflow-y:auto; flex:1; line-height:1.6;">{jma_html}</div>
-    <div id="tab-wind" class="tab-content" style="display:none; overflow-y:auto; flex:1;">{wind_html}</div>
-    <div id="tab-rain" class="tab-content" style="display:none; overflow-y:auto; flex:1;">{rain_html}</div>
-
-    <div id="tab-cwa-web" class="tab-content" style="display:none; overflow-y:auto; flex:1; position: relative;">
-        <div style="margin-bottom: 5px; text-align: right;">
-            <a href="https://www.cwa.gov.tw/V8/C/P/Typhoon/TY_NEWS.html" target="_blank" style="font-size:12px; color:#337ab7; text-decoration:underline;">&#8599; 另開視窗檢視</a>
-        </div>
-        <iframe src="https://www.cwa.gov.tw/V8/C/P/Typhoon/TY_NEWS.html" width="100%" height="90%" style="border:1px solid #ccc; border-radius: 4px;"></iframe>
+    <div id="tab-wind" class="tab-content" style="display:none; overflow-y:auto; flex:1;">
+        <b style="color:#337ab7;">風力預測</b><br>{wind_html}<br>
+        <b style="color:#337ab7;">總雨量預測</b><br>{rain_html}
     </div>
 </div>
 
 <script>
+// 切換分頁邏輯
 function switchTab(tabId) {{
-    const tabIds = ['tab-cyclone', 'tab-alert', 'tab-jma', 'tab-wind', 'tab-rain', 'tab-cwa-web'];
+    const tabIds = ['tab-chat', 'tab-cyclone', 'tab-alert', 'tab-jma', 'tab-wind'];
     tabIds.forEach(function(id) {{
         const panel = document.getElementById(id);
         const button = document.getElementById('btn-' + id.replace('tab-', ''));
         const active = id === tabId;
-        if (panel) panel.style.display = active ? 'block' : 'none';
+        if (panel) panel.style.display = active ? 'flex' : 'none';
+        if (id !== 'tab-chat' && panel && active) panel.style.display = 'block';
         if (button) {{
             button.style.background = active ? '#337ab7' : '#eee';
             button.style.color = active ? 'white' : '#333';
         }}
     }});
+}}
+
+// 聊天室 / 搜尋列邏輯
+function sendQuery(text) {{
+    if(!text || !text.trim()) return;
+    const history = document.getElementById('chat-history');
+    
+    // 1. 顯示使用者輸入
+    history.innerHTML += `<div style="margin-bottom:12px; text-align:right;">
+        <span style="background:#dcf8c6; padding:6px 10px; border-radius:8px; display:inline-block; max-width:85%; word-break:break-all;">${{text}}</span>
+    </div>`;
+    document.getElementById('chat-input').value = '';
+
+    // 2. 判斷關鍵字並產生系統回應
+    let response = "抱歉，我找不到相關資訊。您可以嘗試輸入：「警報」、「颱風動態」、「風力」或「雨量」。";
+    
+    if(text.includes('警報') || text.includes('颱風警報')) {{
+        response = document.getElementById('data-alert').innerHTML;
+    }} else if(text.includes('颱風') || text.includes('動態') || text.includes('氣旋')) {{
+        response = document.getElementById('data-cyclone').innerHTML;
+    }} else if(text.includes('風力') || text.includes('風速')) {{
+        response = document.getElementById('data-wind').innerHTML;
+    }} else if(text.includes('雨量') || text.includes('降雨')) {{
+        response = document.getElementById('data-rain').innerHTML;
+    }} else if(text.includes('日本') || text.includes('JMA')) {{
+        response = document.getElementById('data-jma').innerHTML;
+    }}
+
+    // 3. 顯示系統回覆
+    history.innerHTML += `<div style="margin-bottom:12px; text-align:left;">
+        <b style="color:#337ab7; font-size:12px;">🤖 系統助理：</b><br>
+        <span style="background:#eef; padding:8px 10px; border-radius:8px; display:inline-block; max-width:90%; overflow-x:auto; line-height:1.5;">
+            ${{response}}
+        </span>
+    </div>`;
+    
+    // 捲動到底部
+    history.scrollTop = history.scrollHeight;
 }}
 </script>
 """
