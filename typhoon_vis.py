@@ -420,7 +420,7 @@ def parse_cwa_forecast_xml(xml_content, forecast_type="風力"):
         return f"<p style='color:gray; padding:10px;'>非警報發布期間，暫無最新{forecast_type}資料。</p>"
     except Exception as e:
         return f"<p style='color:red; padding:10px;'>解析{forecast_type}預測失敗: {e}</p>"
-
+   
 # --- [API 擴充] 風力與雨量預測 ---
 print("正在讀取 CWA 風力預測 (F-C0034-005)...")
 f_005_url = f"https://opendata.cwa.gov.tw/fileapi/v1/opendataapi/F-C0034-005?Authorization={CWA_API_KEY}&downloadType=WEB&format=JSON"
