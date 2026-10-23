@@ -2,7 +2,7 @@ name: Auto Update Typhoon Map
 
 on:
   schedule:
-    - cron: '*/5 * * * *'  # 每 5 分鐘排程執行一次
+    - cron: '*/30 * * * *'  # 每 30 分鐘排程執行一次
   workflow_dispatch:       # 允許手動點擊執行
 
 jobs:
