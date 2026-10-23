@@ -27,6 +27,7 @@ m = folium.Map(
 )
 
 # 2. 建立圖層 (FeatureGroups)
+fg_county = folium.FeatureGroup(name="5. 縣市邊界與陸上警戒區", show=True) # <--- 新增這行
 fg_cwa_wsp = folium.FeatureGroup(name="4. CWA 暴風圈侵襲機率 (W-C0034-003)", show=False)
 fg_cwa_route = folium.FeatureGroup(name="3. CWA 警報與暴風圈 (W-C0034-002)", show=True)
 fg_cwa_005 = folium.FeatureGroup(name="2. CWA 熱帶氣旋分析預報 (W-C0034-005)", show=True)
@@ -544,6 +545,8 @@ jma_html = fetch_jma_info()
 # --- CWA 警報文字解析 ---
 cwa_001_url = f"https://opendata.cwa.gov.tw/api/v1/rest/datastore/W-C0034-001?Authorization={CWA_API_KEY}"
 alert_html = ""
+alert_areas_list = [] # <--- 新增：用來儲存警戒縣市名單，供地圖動態塗色使用
+
 try:
     res = requests.get(cwa_001_url, timeout=15)
     if res.status_code == 200:
@@ -552,6 +555,7 @@ try:
         if info_list:
             latest = info_list[0]
             areas = [a.get("areaDesc", "") for a in latest.get("area", [])]
+            alert_areas_list = areas # <--- 新增：把最新取得的警報縣市存起來
             area_str = "、".join(areas) if areas else "無"
             desc_text = ""
             for sec in latest.get("description", {}).get("section", []):
@@ -799,11 +803,66 @@ legend_html = """
   <i class="fa fa-square" style="color:purple; opacity:0.5;"></i> CWA 侵襲機率區
 </div>
 """
+# --- [圖層 5] 縣市邊界與警戒區動態塗色 ---
+county_geojson_path = "twcounty2010.5.json"
+
+def county_style(feature):
+    county_name = feature['properties'].get('county', '')
+    
+    # 判斷該縣市是否有在最新的警報名單中
+    is_alert = False
+    # 容錯處理：API可能回傳「台東縣」或「臺東縣」，做個簡單替換比對
+    county_name_alt = county_name.replace("臺", "台") if "臺" in county_name else county_name.replace("台", "臺")
+    
+    for a in alert_areas_list:
+        if county_name in a or county_name_alt in a or a in county_name:
+            is_alert = True
+            break
+            
+    if is_alert:
+        return {
+            'fillColor': '#d9534f', # 若在警戒區內：填滿警戒紅
+            'color': '#b52b27',     # 邊線深紅
+            'weight': 2,
+            'fillOpacity': 0.45
+        }
+    else:
+        return {
+            'fillColor': '#cccccc', # 若無警報：透明/淺灰色
+            'color': '#666666',     # 邊線灰色
+            'weight': 1,
+            'fillOpacity': 0.05
+        }
+
+if os.path.exists(county_geojson_path):
+    try:
+        with open(county_geojson_path, 'r', encoding='utf-8') as f:
+            geo_data = json.load(f)
+        
+        folium.GeoJson(
+            geo_data,
+            name="台灣縣市邊界 (警戒區自動塗色)",
+            style_function=county_style,
+            tooltip=folium.GeoJsonTooltip(fields=['county'], aliases=['📍 縣市：'], style="font-size: 14px; font-weight: bold;")
+        ).add_to(fg_county)
+    except Exception as e:
+        print(f"載入縣市邊界資料失敗: {e}")
+else:
+    print(f"找不到檔案 {county_geojson_path}，請確認檔案與程式碼放在同一資料夾內。")
+
+# 右下角作者版權浮水印
+watermark_html = """
+<div style="position: fixed; bottom: 5px; right: 10px; z-index: 9999; font-size: 11px; color: #555; background: rgba(255,255,255,0.7); padding: 2px 6px; border-radius: 4px; pointer-events: none;">
+    邊界線圖資提供：<a href="https://github.com/ronnywang" target="_blank" style="color: #337ab7; pointer-events: auto;">ronnywang (GitHub)</a>
+</div>
+"""
 
 m.get_root().html.add_child(folium.Element(tab_panel_html))
 m.get_root().html.add_child(folium.Element(legend_html))
+m.get_root().html.add_child(folium.Element(watermark_html)) # 加入浮水印
 
-# 圖層疊加順序
+# 圖層疊加順序 
+fg_county.add_to(m)   # 加入縣市圖層
 fg_cwa_wsp.add_to(m)
 fg_cwa_route.add_to(m)
 fg_cwa_005.add_to(m)
