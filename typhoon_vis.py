@@ -1,3 +1,4 @@
+from collections import defaultdict
 import io
 import os
 import json
@@ -9,6 +10,7 @@ import datetime
 import html
 import urllib3
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
+import dateutil.parser
 
 # 從環境變數讀取 CWA API 金鑰，若未設定則提供預設值(僅供本地測試)
 CWA_API_KEY = os.environ.get("CWA_API_KEY")
@@ -393,42 +395,125 @@ def get_cwa_product_xml(api_url):
     except Exception as e:
         print(f"取得 CWA Product XML 失敗 ({api_url}): {e}")
         return None
+# --- 輔助函式：美化表格的 CSS ---
+TABLE_CSS = """
+<style>
+    .cwa-table { width: 100%; border-collapse: collapse; font-size: 12px; text-align: center; font-family: sans-serif; }
+    .cwa-table th { background: #337ab7; color: white; padding: 6px; position: sticky; top: 0; z-index: 2; border: 1px solid #286090; }
+    .cwa-table td { border: 1px solid #ddd; padding: 6px; vertical-align: middle; }
+    .cwa-table tr:nth-child(even) { background: #f9f9f9; }
+    .cwa-table tr:hover { background: #f1f7fd; }
+    .danger-wind { color: #d9534f; font-weight: bold; }
+    .table-container { max-height: 350px; overflow-y: auto; margin-bottom: 15px; border: 1px solid #ddd; }
+</style>
+"""
 
-# --- 輔助函式：解析風力與雨量預測 XML ---
-def parse_cwa_forecast_xml(xml_content, forecast_type="風力"):
+# --- 專門解析風力預測 (WindTable.xml 結構) ---
+def parse_wind_xml(xml_content):
     if not xml_content:
-        return f"<p style='color:gray; padding:10px;'>目前無發布最新{forecast_type}預測資料</p>"
+        return "<p style='color:gray;'>暫無風力資料</p>"
     try:
         root = ET.fromstring(xml_content)
-        rows = []
-        for loc in root.iter():
-            if loc.tag.endswith("location") or loc.tag.endswith("Location"):
-                loc_name = ""
-                infos = []
-                for child in loc:
-                    tag_name = child.tag.split("}")[-1]
-                    txt = (child.text or "").strip()
-                    if "location" in tag_name.lower() or "name" in tag_name.lower() or "county" in tag_name.lower():
-                        loc_name = txt
-                    elif txt:
-                        infos.append(f"<b>{tag_name}</b>: {txt}")
-                if loc_name and infos:
-                    rows.append(f"<tr><td style='padding:4px; border-bottom:1px solid #eee; font-weight:bold; white-space:nowrap;'>{loc_name}</td>"
-                                f"<td style='padding:4px; border-bottom:1px solid #eee;'>{' | '.join(infos)}</td></tr>")
-        if rows:
-            return f"<table style='width:100%; border-collapse:collapse; font-size:12px;'>{''.join(rows)}</table>"
-        return f"<p style='color:gray; padding:10px;'>非警報發布期間，暫無最新{forecast_type}資料。</p>"
+        # 使用 defaultdict 來整理同一個地區的不同時間段資料
+        wind_data = defaultdict(list)
+        
+        # 尋找所有 AreaForecastData 節點
+        for area_node in root.findall(".//AreaForecastData"):
+            area_name = area_node.get("area", "未知區域")
+            start_time_str = area_node.find(".//StartValidTime/Time").text if area_node.find(".//StartValidTime/Time") is not None else ""
+            end_time_str = area_node.find(".//EndValidTime/Time").text if area_node.find(".//EndValidTime/Time") is not None else ""
+            
+            # 格式化時間 (只取 日/時)
+            try:
+                st = dateutil.parser.isoparse(start_time_str).strftime("%d日%H時")
+                et = dateutil.parser.isoparse(end_time_str).strftime("%d日%H時")
+                time_range = f"{st} - {et}"
+            except:
+                time_range = start_time_str
+            
+            # 取得風力 (平均風與陣風)
+            wind_type = area_node.find(".//WindData").get("type", "")
+            level = area_node.find(".//WindData/Level").text if area_node.find(".//WindData/Level") is not None else "-"
+            
+            # 整理結構：以 (地區, 時間) 為 Key
+            wind_data[(area_name, time_range)].append((wind_type, level))
+
+        if not wind_data:
+            return "<p style='color:gray;'>目前非警報期間，無風力預測。</p>"
+
+        # 組合 HTML 表格
+        html = TABLE_CSS + "<div class='table-container'><table class='cwa-table'><tr><th>地區</th><th>時間區間</th><th>平均風</th><th>陣風</th></tr>"
+        
+        # 整理輸出
+        for (area, time_range), values in wind_data.items():
+            avg_wind = "-"
+            gust_wind = "-"
+            for v_type, v_level in values:
+                if v_type == "average": avg_wind = v_level
+                if v_type == "gust": gust_wind = v_level
+            
+            # 如果陣風超過 10 級，標記為紅色警告
+            gust_class = "danger-wind" if "10" in gust_wind or "11" in gust_wind or "12" in gust_wind else ""
+            
+            html += f"<tr><td><b>{area}</b></td><td>{time_range}</td><td>{avg_wind}</td><td class='{gust_class}'>{gust_wind}</td></tr>"
+        
+        html += "</table></div>"
+        return html
     except Exception as e:
-        return f"<p style='color:red; padding:10px;'>解析{forecast_type}預測失敗: {e}</p>"
+        return f"<p style='color:red;'>解析風力預測失敗: {e}</p>"
+
+# --- 專門解析雨量預測 (動態解析 S3 內的 Table 結構) ---
+def parse_rain_xml(xml_content, title_prefix="雨量"):
+    if not xml_content:
+        return f"<p style='color:gray;'>暫無{title_prefix}資料</p>"
+    try:
+        root = ET.fromstring(xml_content)
+        html = TABLE_CSS + f"<div class='table-container'><table class='cwa-table'><tr><th>地區</th><th>預測值 (毫米)</th></tr>"
+        
+        has_data = False
+        # CWA 降雨量預測表格通常用 County / Area / Station 作為分層，包含 PredictValue 或 Rainfall
+        # 這裡採用一種容錯率較高的爬梳法：找尋所有包含預測值的節點
+        for item in root.iter():
+            tag = item.tag.lower()
+            if "county" in tag or "location" in tag or "area" in tag:
+                name = ""
+                value = ""
+                for child in item:
+                    ctag = child.tag.lower()
+                    if "name" in ctag:
+                        name = child.text
+                    elif "predictvalue" in ctag or "rainfall" in ctag or "value" in ctag:
+                        value = child.text
+                
+                if name and value:
+                    html += f"<tr><td><b>{name}</b></td><td>{value}</td></tr>"
+                    has_data = True
+                    
+        html += "</table></div>"
+        
+        if not has_data:
+            return f"<p style='color:gray;'>目前無最新的{title_prefix}預測數據 (XML結構可能為空或無警戒)。</p>"
+            
+        return html
+    except Exception as e:
+        return f"<p style='color:red;'>解析{title_prefix}預測失敗: {e}</p>"
+
    
 # --- [API 擴充] 風力與雨量預測 ---
 print("正在讀取 CWA 風力預測 (F-C0034-005)...")
 f_005_url = f"https://opendata.cwa.gov.tw/fileapi/v1/opendataapi/F-C0034-005?Authorization={CWA_API_KEY}&downloadType=WEB&format=JSON"
-wind_html = parse_cwa_forecast_xml(get_cwa_product_xml(f_005_url), forecast_type="風力")
+wind_xml_data = get_cwa_product_xml(f_005_url)
+wind_html = parse_wind_xml(wind_xml_data)
+
+print("正在讀取 CWA 24小時雨量預測 (F-C0034-006)...")
+f_006_url = f"https://opendata.cwa.gov.tw/fileapi/v1/opendataapi/F-C0034-006?Authorization={CWA_API_KEY}&downloadType=WEB&format=JSON"
+rain_24h_xml_data = get_cwa_product_xml(f_006_url)
+rain_24h_html = parse_rain_xml(rain_24h_xml_data, "24小時雨量")
 
 print("正在讀取 CWA 總雨量預測 (F-C0034-007)...")
 f_007_url = f"https://opendata.cwa.gov.tw/fileapi/v1/opendataapi/F-C0034-007?Authorization={CWA_API_KEY}&downloadType=WEB&format=JSON"
-rain_html = parse_cwa_forecast_xml(get_cwa_product_xml(f_007_url), forecast_type="總雨量")
+rain_total_xml_data = get_cwa_product_xml(f_007_url)
+rain_total_html = parse_rain_xml(rain_total_xml_data, "總雨量")
 
 # --- [API 擴充] 日本氣象廳 (JMA) 颱風 JSON API ---
 print("正在讀取 JMA (日本氣象廳) 颱風資料...")
@@ -622,9 +707,24 @@ tab_panel_html = f"""
     <div id="tab-cyclone" class="tab-content" style="display:none; overflow-y:auto; flex:1; line-height:1.6;">{cyclone_panel_html}</div>
     <div id="tab-alert" class="tab-content" style="display:none; overflow-y:auto; flex:1; line-height:1.6;">{alert_html}</div>
     <div id="tab-jma" class="tab-content" style="display:none; overflow-y:auto; flex:1; line-height:1.6;">{jma_html}</div>
-    <div id="tab-wind" class="tab-content" style="display:none; overflow-y:auto; flex:1;">
-        <b style="color:#337ab7;">風力預測</b><br>{wind_html}<br>
-        <b style="color:#337ab7;">總雨量預測</b><br>{rain_html}
+    <div id="tab-wind" class="tab-content" style="display:none; flex-direction:column; flex:1; overflow:hidden;">
+        <!-- 子分頁按鈕 -->
+        <div style="display: flex; gap: 5px; margin-bottom: 10px;">
+            <button onclick="document.getElementById('w-content').style.display='block'; document.getElementById('r24-content').style.display='none'; document.getElementById('rt-content').style.display='none';" style="flex:1; padding:5px; cursor:pointer;">💨 風力預測</button>
+            <button onclick="document.getElementById('w-content').style.display='none'; document.getElementById('r24-content').style.display='block'; document.getElementById('rt-content').style.display='none';" style="flex:1; padding:5px; cursor:pointer;">☔ 24H雨量</button>
+            <button onclick="document.getElementById('w-content').style.display='none'; document.getElementById('r24-content').style.display='none'; document.getElementById('rt-content').style.display='block';" style="flex:1; padding:5px; cursor:pointer;">🌧️ 總雨量</button>
+        </div>
+        
+        <!-- 內容區 -->
+        <div id="w-content" style="display:block; flex:1; overflow-y:auto;">
+            <b style="color:#e65100;">各地區風力預測</b><br>{wind_html}
+        </div>
+        <div id="r24-content" style="display:none; flex:1; overflow-y:auto;">
+            <b style="color:#0275d8;">24小時雨量預測</b><br>{rain_24h_html}
+        </div>
+        <div id="rt-content" style="display:none; flex:1; overflow-y:auto;">
+            <b style="color:#0275d8;">總雨量預測</b><br>{rain_total_html}
+        </div>
     </div>
 </div>
 
