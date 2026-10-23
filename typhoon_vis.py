@@ -701,7 +701,7 @@ tab_panel_html = f"""
     <div id="data-alert" style="display:none;">{alert_html}</div>
     <div id="data-jma" style="display:none;">{jma_html}</div>
     <div id="data-wind" style="display:none;">{wind_html}</div>
-    <div id="data-rain" style="display:none;">{rain_html}</div>
+    <div id="data-rain" style="display:none;">{rain_24h_html}<br>{rain_total_html}</div>
 
     <!-- 實際內容面板 -->
     <div id="tab-cyclone" class="tab-content" style="display:none; overflow-y:auto; flex:1; line-height:1.6;">{cyclone_panel_html}</div>
@@ -735,8 +735,14 @@ function switchTab(tabId) {{
         const panel = document.getElementById(id);
         const button = document.getElementById('btn-' + id.replace('tab-', ''));
         const active = id === tabId;
-        if (panel) panel.style.display = active ? 'flex' : 'none';
-        if (id !== 'tab-chat' && panel && active) panel.style.display = 'block';
+        if (panel) {{
+            if (active) {{
+                // 確保 tab-chat 與 tab-wind 保持 flex 佈局
+                panel.style.display = (id === 'tab-chat' || id === 'tab-wind') ? 'flex' : 'block';
+            }} else {{
+                panel.style.display = 'none';
+            }}
+        }}
         if (button) {{
             button.style.background = active ? '#337ab7' : '#eee';
             button.style.color = active ? 'white' : '#333';
