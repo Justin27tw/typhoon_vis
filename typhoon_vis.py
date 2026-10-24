@@ -746,7 +746,7 @@ tab_panel_html = f"""
         </div>
     </div>
 </div>
-     
+      
 <script>
 function switchTab(tabId) {{
     // 陣列最後方補上 'tab-history'
