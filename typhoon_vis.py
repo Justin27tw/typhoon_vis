@@ -680,6 +680,8 @@ tab_panel_html = f"""
         <button onclick="switchTab('tab-alert')" id="btn-alert" class="tab-btn">CWA 警報</button>
         <button onclick="switchTab('tab-jma')" id="btn-jma" class="tab-btn">JMA 動態</button>
         <button onclick="switchTab('tab-wind')" id="btn-wind" class="tab-btn">風力/雨量</button>
+        <button onclick="switchTab('tab-history')" id="btn-history" class="tab-btn">歷史紀錄</button>
+    
     </div>
 
     <!-- 聊天室與搜尋分頁 -->
@@ -730,19 +732,33 @@ tab_panel_html = f"""
             <b style="color:#0275d8;">總雨量預測</b><br>{rain_total_html}
         </div>
     </div>
+    <div id="tab-history" class="tab-content" style="display:none; flex-direction:column; flex:1; overflow-y:auto;">
+        <div style="background-color: #f9f9f9; padding: 10px; border-radius: 4px; border: 1px solid #ddd; margin-bottom: 8px;">
+            <b style="color: #337ab7; font-size: 14px;"><i class="fa fa-folder-open"></i> 歷史颱風資料庫</b>
+            <p style="font-size: 12px; color: #666; margin-top: 5px;">點擊下方颱風名稱即可顯示對應的歷史動態與預測紀錄。</p>
+        </div>
+        <div style="display: flex; flex-direction: column; gap: 8px;">
+            <button onclick="window.open('typhoonvis.CHAMPI.html', '_blank')" class="quick-btn" style="text-align: left; padding: 12px; font-size: 13px; border: 1px solid #ffccbc; background: #fff9f5; transition: 0.2s;">
+                <b style="color: #d84315;">🌀 薔琵 (CHAMPI)</b> 
+                <span style="font-size:11px; background:#d84315; color:#fff; padding:1px 5px; border-radius:3px; margin-left:4px;">CWA 編號: 29</span><br>
+                <span style="font-size: 11px; color: #555; margin-top: 4px; display: inline-block;">紀錄時間: 2026-10-23</span>
+            </button>
+        </div>
+    </div>
 </div>
 
 <script>
 function switchTab(tabId) {{
-    const tabIds = ['tab-chat', 'tab-cyclone', 'tab-alert', 'tab-jma', 'tab-wind'];
+    // 陣列最後方補上 'tab-history'
+    const tabIds = ['tab-chat', 'tab-cyclone', 'tab-alert', 'tab-jma', 'tab-wind', 'tab-history']; 
     tabIds.forEach(function(id) {{
         const panel = document.getElementById(id);
         const button = document.getElementById('btn-' + id.replace('tab-', ''));
         const active = id === tabId;
         if (panel) {{
             if (active) {{
-                // 確保 tab-chat 與 tab-wind 保持 flex 佈局
-                panel.style.display = (id === 'tab-chat' || id === 'tab-wind') ? 'flex' : 'block';
+                // 將 tab-history 也加入使用 flex 佈局的條件中
+                panel.style.display = (id === 'tab-chat' || id === 'tab-wind' || id === 'tab-history') ? 'flex' : 'block';
             }} else {{
                 panel.style.display = 'none';
             }}
