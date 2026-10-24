@@ -891,7 +891,7 @@ output_file = "index.html"
 m.save(output_file)
 print(f"地圖已成功更新，已加入 RWD 手機版響應式排版支援：{output_file}")
 # 新增：自動產生 Netlify 重新導向設定檔 (_redirects)
-redirects_content = "/typhoonvis_champi    /typhoonvis.CHAMPI.html    200\n"
+redirects_content = "/typhoonvis_champi    /typhoonvis_CHAMPI.html    200\n"
 with open("_redirects", "w", encoding="utf-8") as f:
     f.write(redirects_content)
 print("已成功產生 Netlify 導向設定檔：_redirects")
