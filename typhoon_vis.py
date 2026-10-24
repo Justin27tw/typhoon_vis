@@ -225,6 +225,7 @@ try:
             cyclones = [cyclones]
 
         panel_blocks = []
+        all_chart_data = {}  # 準備存儲所有活動中颱風的圖表資料
         for cyc in cyclones:
             name_en = cyc.get("TyphoonName", "未命名")
             name_zh = cyc.get("CwaTyphoonName", "")
@@ -237,12 +238,30 @@ try:
             
             history_pts = []
             latest_fix = None
+
+            #  建立圖表專用陣列
+            c_labels = []
+            c_winds = []
+            c_pressures = []
+
             for fix in analysis_fixes:
                 lat = float(fix.get("CoordinateLatitude"))
                 lon = float(fix.get("CoordinateLongitude"))
                 history_pts.append([lat, lon])
                 latest_fix = fix
+                # 收集時間、風速、氣壓資料
+                raw_dt = fix.get("DateTime", "").replace("T", " ")
+                try:
+                    dt_obj = dateutil.parser.isoparse(fix.get("DateTime", ""))
+                    fmt_dt = dt_obj.strftime("%m-%d %H:%M") # 格式化為 月-日 時:分
+                except:
+                    fmt_dt = raw_dt[:16]
                 
+                c_labels.append(fmt_dt)
+                try: c_winds.append(float(fix.get('MaxWindSpeed', 0)))
+                except: c_winds.append(0)
+                try: c_pressures.append(float(fix.get('Pressure', 0)))
+                except: c_pressures.append(0)
                 dt = fix.get("DateTime", "").replace("T", " ")
                 r15 = format_radius(fix.get("Circle15ms"))
                 r25 = format_radius(fix.get("Circle25ms"))
@@ -271,6 +290,12 @@ try:
                     tooltip=f"{title_name} 定位: {dt}",
                     popup=folium.Popup(popup_content, max_width=320)
                 ).add_to(fg_cwa_005)
+                
+            all_chart_data[title_name] = {
+                "labels": c_labels,
+                "winds": c_winds,
+                "pressures": c_pressures
+            }
 
             if len(history_pts) > 1:
                 folium.PolyLine(
@@ -580,8 +605,13 @@ if not alert_html:
     """
 
 # --- 介面面板 (RWD 優化) ---
-# 加入 CSS 進行手機端排版偵測，當螢幕小於 768px 時改變資訊面板與圖例的大小及位置
+import json
+chart_data_json_str = json.dumps(all_chart_data) if 'all_chart_data' in locals() else "{}"
+
 tab_panel_html = f"""
+<!-- 引入 Chart.js -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
 <style>
     .info-panel {{
         position: fixed; 
@@ -634,34 +664,15 @@ tab_panel_html = f"""
         font-size: 11px;
         text-align: center;
     }}
-    
-    /* 手機版 RWD 樣式 */
     @media (max-width: 768px) {{
         .info-panel {{
-            right: 0;
-            bottom: 0;
-            width: 100%;
-            height: 45vh; /* 手機版高度縮小，避免擋住地圖 */
-            border-radius: 12px 12px 0 0;
-            border-bottom: none;
-            border-left: none;
-            border-right: none;
-            opacity: 1;
+            right: 0; bottom: 0; width: 100%; height: 45vh; 
+            border-radius: 12px 12px 0 0; border-bottom: none; border-left: none; border-right: none; opacity: 1;
         }}
         .legend-panel {{
-            left: 10px;
-            bottom: 48vh; /* 移至資訊面板上方 */
-            width: auto;
-            max-width: 200px;
-            font-size: 10px;
-            padding: 6px;
-            max-height: 150px;
-            overflow-y: auto;
+            left: 10px; bottom: 48vh; width: auto; max-width: 200px; font-size: 10px; padding: 6px; max-height: 150px; overflow-y: auto;
         }}
-        .tab-btn {{
-            font-size: 10px;
-            padding: 4px 2px;
-        }}
+        .tab-btn {{ font-size: 10px; padding: 4px 2px; }}
     }}
 </style>
 
@@ -681,7 +692,6 @@ tab_panel_html = f"""
         <button onclick="switchTab('tab-jma')" id="btn-jma" class="tab-btn">JMA 動態</button>
         <button onclick="switchTab('tab-wind')" id="btn-wind" class="tab-btn">風力/雨量</button>
         <button onclick="switchTab('tab-history')" id="btn-history" class="tab-btn">歷史紀錄</button>
-    
     </div>
 
     <!-- 聊天室與搜尋分頁 -->
@@ -714,14 +724,11 @@ tab_panel_html = f"""
     <div id="tab-alert" class="tab-content" style="display:none; overflow-y:auto; flex:1; line-height:1.6;">{alert_html}</div>
     <div id="tab-jma" class="tab-content" style="display:none; overflow-y:auto; flex:1; line-height:1.6;">{jma_html}</div>
     <div id="tab-wind" class="tab-content" style="display:none; flex-direction:column; flex:1; overflow:hidden;">
-        <!-- 子分頁按鈕 -->
         <div style="display: flex; gap: 5px; margin-bottom: 10px;">
             <button onclick="document.getElementById('w-content').style.display='block'; document.getElementById('r24-content').style.display='none'; document.getElementById('rt-content').style.display='none';" style="flex:1; padding:5px; cursor:pointer;">💨 風力預測</button>
             <button onclick="document.getElementById('w-content').style.display='none'; document.getElementById('r24-content').style.display='block'; document.getElementById('rt-content').style.display='none';" style="flex:1; padding:5px; cursor:pointer;">☔ 24H雨量</button>
             <button onclick="document.getElementById('w-content').style.display='none'; document.getElementById('r24-content').style.display='none'; document.getElementById('rt-content').style.display='block';" style="flex:1; padding:5px; cursor:pointer;">🌧️ 總雨量</button>
         </div>
-        
-        <!-- 內容區 -->
         <div id="w-content" style="display:block; flex:1; overflow-y:auto;">
             <b style="color:#e65100;">各地區風力預測</b><br>{wind_html}
         </div>
@@ -732,15 +739,25 @@ tab_panel_html = f"""
             <b style="color:#0275d8;">總雨量預測</b><br>{rain_total_html}
         </div>
     </div>
+    
+    <!-- 歷史紀錄面板 -->
     <div id="tab-history" class="tab-content" style="display:none; flex-direction:column; flex:1; overflow-y:auto;">
+        
+        <!-- 動態圖表區塊 -->
+        <div id="dynamic-chart-container" style="display:none; background-color: #fff; padding: 10px; border-radius: 4px; border: 1px solid #ddd; margin-bottom: 8px;">
+            <b id="chart-title" style="color: #337ab7; font-size: 14px;"><i class="fa fa-chart-line"></i> 強度趨勢圖</b>
+            <div style="position: relative; height: 220px; width: 100%; margin-top: 10px;">
+                <canvas id="typhoonTrendChart"></canvas>
+            </div>
+        </div>
+
+        <!-- 歷史存檔按鈕 -->
         <div style="background-color: #f9f9f9; padding: 10px; border-radius: 4px; border: 1px solid #ddd; margin-bottom: 8px;">
-            <b style="color: #337ab7; font-size: 14px;"><i class="fa fa-folder-open"></i> 歷史颱風資料庫</b>
-            <p style="font-size: 12px; color: #666; margin-top: 5px;">點擊下方颱風名稱即可顯示對應的歷史動態與預測紀錄。</p>
+            <b style="color: #337ab7; font-size: 14px;"><i class="fa fa-folder-open"></i> 靜態歷史檔案</b>
         </div>
         <div style="display: flex; flex-direction: column; gap: 8px;">
             <button onclick="window.open('typhoonvis_CHAMPI.html', '_blank')" class="quick-btn" style="text-align: left; padding: 12px; font-size: 13px; border: 1px solid #ffccbc; background: #fff9f5; transition: 0.2s;">
-                <b style="color: #d84315;">🌀 薔琵 (CHAMPI)</b> 
-                <span style="font-size:11px; background:#d84315; color:#fff; padding:1px 5px; border-radius:3px; margin-left:4px;">CWA 編號: 29</span><br>
+                <b style="color: #d84315;">🌀 薔琵 (CHAMPI)</b><br>
                 <span style="font-size: 11px; color: #555; margin-top: 4px; display: inline-block;">紀錄時間: 2026-10-23</span>
             </button>
         </div>
@@ -748,8 +765,72 @@ tab_panel_html = f"""
 </div>
       
 <script>
+// ⬅️ [新增] 接收 Python 動態產生的所有颱風歷史資料 JSON
+const allChartData = {chart_data_json_str};
+let trendChart = null;
+
+function renderChart() {{
+    const typhoonNames = Object.keys(allChartData);
+    if (typhoonNames.length === 0) return;
+    
+    // 顯示圖表區塊
+    document.getElementById('dynamic-chart-container').style.display = 'block';
+    
+    // 預設抓取陣列中最新的一個颱風來畫圖
+    const tName = typhoonNames[0];
+    const tData = allChartData[tName];
+    
+    document.getElementById('chart-title').innerHTML = `<i class="fa fa-chart-line"></i> ${{tName}} 強度趨勢圖`;
+
+    const ctx = document.getElementById('typhoonTrendChart');
+    if (!ctx || trendChart) return; 
+
+    trendChart = new Chart(ctx, {{
+        type: 'line',
+        data: {{
+            labels: tData.labels,
+            datasets: [
+                {{
+                    label: '中心最大風速 (m/s)',
+                    data: tData.winds, 
+                    borderColor: '#d9534f', 
+                    backgroundColor: 'rgba(217, 83, 79, 0.1)',
+                    yAxisID: 'y',
+                    tension: 0.3, 
+                    fill: true
+                }},
+                {{
+                    label: '中心氣壓 (hPa)',
+                    data: tData.pressures, 
+                    borderColor: '#337ab7', 
+                    backgroundColor: 'rgba(51, 122, 183, 0.1)',
+                    yAxisID: 'y1',
+                    tension: 0.3
+                }}
+            ]
+        }},
+        options: {{
+            responsive: true,
+            maintainAspectRatio: false,
+            interaction: {{ mode: 'index', intersect: false }},
+            plugins: {{ legend: {{ labels: {{ font: {{ size: 10 }} }} }} }},
+            scales: {{
+                x: {{ ticks: {{ font: {{ size: 10 }} }} }},
+                y: {{
+                    type: 'linear', display: true, position: 'left',
+                    title: {{ display: true, text: '風速 (m/s)', font: {{ size: 10 }} }}
+                }},
+                y1: {{
+                    type: 'linear', display: true, position: 'right', reverse: true,
+                    title: {{ display: true, text: '氣壓 (hPa)', font: {{ size: 10 }} }},
+                    grid: {{ drawOnChartArea: false }} 
+                }}
+            }}
+        }}
+    }});
+}}
+
 function switchTab(tabId) {{
-    // 陣列最後方補上 'tab-history'
     const tabIds = ['tab-chat', 'tab-cyclone', 'tab-alert', 'tab-jma', 'tab-wind', 'tab-history']; 
     tabIds.forEach(function(id) {{
         const panel = document.getElementById(id);
@@ -757,8 +838,12 @@ function switchTab(tabId) {{
         const active = id === tabId;
         if (panel) {{
             if (active) {{
-                // 將 tab-history 也加入使用 flex 佈局的條件中
                 panel.style.display = (id === 'tab-chat' || id === 'tab-wind' || id === 'tab-history') ? 'flex' : 'block';
+                
+                // 切換到歷史頁籤時觸發圖表繪製
+                if (id === 'tab-history') {{
+                    setTimeout(renderChart, 100); 
+                }}
             }} else {{
                 panel.style.display = 'none';
             }}
@@ -802,6 +887,7 @@ function sendQuery(text) {{
 }}
 </script>
 """
+
 
 # 圖例 (加入 CSS Class 進行 RWD 控制)
 legend_html = """
