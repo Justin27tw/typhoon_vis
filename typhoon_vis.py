@@ -17,6 +17,9 @@ CWA_API_KEY = os.environ.get("CWA_API_KEY")
 
 # 取得現在的更新時間 (轉換為台灣時間 UTC+8)
 current_time_str = (datetime.datetime.utcnow() + datetime.timedelta(hours=8)).strftime("%Y-%m-%d %H:%M:%S")
+#初始化 README 內容
+readme_content = "## 網站：https://typhoonvis.netlify.app/\n\n"
+readme_content += f"### 🌀 最新熱帶氣旋動態 (更新時間：{current_time_str})\n\n"
 
 # 1. 初始化 Folium 互動地圖
 m = folium.Map(
@@ -378,11 +381,23 @@ try:
                     </div>
                 </div>
                 """)
+                #將該颱風資訊轉為 Markdown 格式寫入 README
+                readme_content += f"#### {title_name} (CWA 編號: {cwa_ty_no})\n"
+                readme_content += f"- **最新定位時間**：{dt_str}\n"
+                readme_content += f"- **中心位置**：北緯 {latest_fix.get('CoordinateLatitude')}°, 東經 {latest_fix.get('CoordinateLongitude')}°\n"
+                readme_content += f"- **中心氣壓**：{latest_fix.get('Pressure')} hPa\n"
+                readme_content += f"- **中心最大風速**：{latest_fix.get('MaxWindSpeed')} m/s (陣風: {latest_fix.get('MaxGustSpeed')} m/s)\n"
+                readme_content += f"- **移動速度/方向**：{latest_fix.get('MovingSpeed')} km/h，向 {latest_fix.get('MovingDirection')}\n"
+                readme_content += f"- **七級風暴風半徑**：{format_radius(latest_fix.get('Circle15ms'))}\n"
+                readme_content += f"- **十級風暴風半徑**：{format_radius(latest_fix.get('Circle25ms'))}\n"
+                readme_content += f"- **預測動態**：{extract_lang_text(latest_fix.get('MovingPrediction'))}\n\n"
 
         if panel_blocks:
             cyclone_panel_html = "".join(panel_blocks)
         else:
             cyclone_panel_html = "<p style='color:gray; padding:10px;'>目前西北太平洋及南海無活動中的熱帶氣旋紀錄。</p>"
+            #無颱風時的 README 顯示
+            readme_content += "> 目前西北太平洋及南海無活動中的熱帶氣旋紀錄。\n\n"
 except Exception as e:
     print(f"讀取 CWA W-C0034-005 發生錯誤: {e}")
     cyclone_panel_html = f"<p style='color:red; padding:10px;'>無法解析熱帶氣旋資料: {e}</p>"
@@ -976,8 +991,12 @@ folium.LayerControl(position="topright", collapsed=False).add_to(m)
 output_file = "index.html"
 m.save(output_file)
 print(f"地圖已成功更新，已加入 RWD 手機版響應式排版支援：{output_file}")
-# 新增：自動產生 Netlify 重新導向設定檔 (_redirects)
+# 自動產生 Netlify 重新導向設定檔 (_redirects)
 redirects_content = "/typhoonvis_champi    /typhoonvis_CHAMPI.html    200\n"
 with open("_redirects", "w", encoding="utf-8") as f:
     f.write(redirects_content)
 print("已成功產生 Netlify 導向設定檔：_redirects")
+# 輸出 README.md 檔案
+with open("README.md", "w", encoding="utf-8") as f:
+    f.write(readme_content)
+print("已成功自動更新 README.md 檔")
