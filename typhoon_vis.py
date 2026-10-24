@@ -738,7 +738,7 @@ tab_panel_html = f"""
             <p style="font-size: 12px; color: #666; margin-top: 5px;">點擊下方颱風名稱即可顯示對應的歷史動態與預測紀錄。</p>
         </div>
         <div style="display: flex; flex-direction: column; gap: 8px;">
-            <button onclick="window.open('typhoonvis.CHAMPI.html', '_blank')" class="quick-btn" style="text-align: left; padding: 12px; font-size: 13px; border: 1px solid #ffccbc; background: #fff9f5; transition: 0.2s;">
+            <button onclick="window.open('typhoonvis_CHAMPI.html', '_blank')" class="quick-btn" style="text-align: left; padding: 12px; font-size: 13px; border: 1px solid #ffccbc; background: #fff9f5; transition: 0.2s;">
                 <b style="color: #d84315;">🌀 薔琵 (CHAMPI)</b> 
                 <span style="font-size:11px; background:#d84315; color:#fff; padding:1px 5px; border-radius:3px; margin-left:4px;">CWA 編號: 29</span><br>
                 <span style="font-size: 11px; color: #555; margin-top: 4px; display: inline-block;">紀錄時間: 2026-10-23</span>
