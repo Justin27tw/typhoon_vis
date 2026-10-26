@@ -594,8 +594,16 @@ try:
         info_list = data.get("records", {}).get("info", [])
         if info_list:
             latest = info_list[0]
-            areas = [a.get("areaDesc", "") for a in latest.get("area", [])]
-            alert_areas_list = areas # <--- 新增：把最新取得的警報縣市存起來
+            headline_text = latest.get('headline', '颱風警報')
+            
+            # 新增邏輯：判斷若標題包含「解除」，則強制清空警戒區域清單
+            if "解除" in headline_text:
+                areas = []
+                alert_areas_list = []
+            else:
+                areas = [a.get("areaDesc", "") for a in latest.get("area", [])]
+                alert_areas_list = areas 
+                
             area_str = "、".join(areas) if areas else "無"
             desc_text = ""
             for sec in latest.get("description", {}).get("section", []):
@@ -603,9 +611,11 @@ try:
                 value = sec.get('value', '')
                 if title and value:
                     desc_text += f"<b style='color:#337ab7;'>[{title}]</b> {value}<br><br>"
-            
+            # 判斷是否解除，給予不同顏色
+            # 判斷是否解除，給予不同顏色
+            theme_color = "#5cb85c" if "解除" in headline_text else "#d9534f"
             alert_html = f"""
-            <h4 style="margin:0 0 5px 0; color:#d9534f;">{latest.get('headline', '颱風警報')}</h4>
+            <h4 style="margin:0 0 5px 0; color:{theme_color};"> {latest.get('headline', '颱風警報')}</h4>
             <small>CWA 發布時間：{latest.get('effective', '')}</small><hr style="margin:5px 0;">
             <div style="margin-bottom: 10px; font-size: 13px;"><b>【警戒區域】</b>：{area_str}</div>
             <div style="font-size: 12px; line-height: 1.6; background-color: #f9f9f9; padding: 10px; border-radius: 6px; border-left: 4px solid #d9534f; overflow-wrap: break-word;">{desc_text}</div>
