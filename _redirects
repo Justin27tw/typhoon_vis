@@ -1,1 +1,31 @@
-/typhoonvis_champi    /typhoonvis_CHAMPI.html    200
+output_file = "index.html"
+m.save(output_file)
+print(f"地圖已成功更新，已加入 RWD 手機版響應式排版支援：{output_file}")
+
+# 1. 自動將最新畫面同步備份至當前活躍颱風的專屬檔案 (例如 typhoonvis_IN-FA.html)
+for ty in active_typhoons:
+    clean_eng = sanitize_eng_name(ty["eng_name"])
+    archive_filename = f"typhoonvis_{clean_eng}.html"
+    shutil.copyfile(output_file, archive_filename)
+    print(f"已同步更新活躍颱風專屬存檔：{archive_filename}")
+
+# 2. 根據 typhoons_index.json 動態產生 Netlify 重新導向設定檔 (_redirects)
+redirects_lines = []
+for eng_key, info in typhoon_registry.items():
+    fname = info["filename"]
+    redirects_lines.append(f"/typhoonvis_{eng_key.lower()}    /{fname}    200")
+    redirects_lines.append(f"/typhoonvis_{eng_key}    /{fname}    200")
+
+with open("_redirects", "w", encoding="utf-8") as f:
+    f.write("\n".join(redirects_lines) + "\n")
+print("已成功動態產生 Netlify 導向設定檔：_redirects")
+
+# 3. 輸出 README.md 檔案 (附加歷史颱風連結列表)
+readme_content += "### 📁 歷史與活躍颱風存檔紀錄\n\n"
+for eng_key, info in typhoon_registry.items():
+    status_str = "🟢 活躍中" if info.get("status") == "active" else "⚪ 歷史紀錄"
+    readme_content += f"- **{info['zh_name']} ({info['eng_name']})** [{status_str}] - 最後更新：{info['last_updated']} ([查看地圖](https://typhoonvis.netlify.app/{info['filename']}))\n"
+
+with open("README.md", "w", encoding="utf-8") as f:
+    f.write(readme_content)
+print("已成功自動更新 README.md 檔")

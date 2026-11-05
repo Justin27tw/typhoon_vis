@@ -5,15 +5,74 @@ import json
 import xml.etree.ElementTree as ET
 import zipfile
 import folium
+import shutil  # <--- 新增：用於自動複製備份各颱風專屬 HTML
 import requests
 import datetime
 import html
+import re
 import urllib3
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 import dateutil.parser
 
+
 # 從環境變數讀取 CWA API 金鑰，若未設定則提供預設值(僅供本地測試)
 CWA_API_KEY = os.environ.get("CWA_API_KEY")
+INDEX_FILE = "typhoons_index.json"
+
+def sanitize_eng_name(eng_name):
+    """清理英文名稱，只保留英數字與連字號，例如 'IN-FA'"""
+    if not eng_name:
+        return "UNKNOWN"
+    return re.sub(r'[^A-Za-z0-9\-]', '', eng_name.upper())
+
+def update_typhoon_registry(active_typhoons, current_time_str):
+    """
+    active_typhoons 格式範例:
+    [
+        {"cwa_no": "30", "zh_name": "煙花", "eng_name": "IN-FA", "last_time": "2026-10-26 20:00"}
+    ]
+    """
+    # 1. 讀取現有的索引檔（若無則初始化，並把既有的 CHAMPI 加入）
+    if os.path.exists(INDEX_FILE):
+        with open(INDEX_FILE, "r", encoding="utf-8") as f:
+            registry = json.load(f)
+    else:
+        registry = {
+            "CHAMPI": {
+                "cwa_no": "29",
+                "zh_name": "薔琵",
+                "eng_name": "CHAMPI",
+                "filename": "typhoonvis_CHAMPI.html",
+                "last_updated": "2026-10-23",
+                "status": "historical"
+            }
+        }
+
+    # 2. 先將所有既有紀錄標記為歷史狀態 (historical)
+    for key in registry:
+        registry[key]["status"] = "historical"
+
+    # 3. 更新或新增當前活躍的熱帶氣旋
+    for ty in active_typhoons:
+        clean_eng = sanitize_eng_name(ty["eng_name"])
+        filename = f"typhoonvis_{clean_eng}.html"
+        registry[clean_eng] = {
+            "cwa_no": str(ty.get("cwa_no", "")),
+            "zh_name": ty.get("zh_name", clean_eng),
+            "eng_name": clean_eng,
+            "filename": filename,
+            "last_updated": ty.get("last_time", current_time_str[:10]),
+            "status": "active"
+        }
+
+    # 4. 依最後更新時間由新到舊排序並存檔
+    sorted_registry = dict(
+        sorted(registry.items(), key=lambda item: item[1]["last_updated"], reverse=True)
+    )
+    with open(INDEX_FILE, "w", encoding="utf-8") as f:
+        json.dump(sorted_registry, f, ensure_ascii=False, indent=2)
+
+    return sorted_registry
 
 # 取得現在的更新時間 (轉換為台灣時間 UTC+8)
 current_time_str = (datetime.datetime.utcnow() + datetime.timedelta(hours=8)).strftime("%Y-%m-%d %H:%M:%S")
@@ -213,7 +272,8 @@ def format_radius(circle_obj):
     if isinstance(circle_obj, dict):
         return f"{circle_obj.get('Radius', '未知')} 公里"
     return f"{circle_obj} 公里"
-
+active_typhoons = []  # <--- 新增：收集當前活躍颱風
+all_chart_data = {}  # 準備存儲所有活動中颱風的圖表資料
 try:
     res_005 = requests.get(cwa_005_url, timeout=15, verify=False)
     if res_005.status_code == 200:
@@ -228,7 +288,7 @@ try:
             cyclones = [cyclones]
 
         panel_blocks = []
-        all_chart_data = {}  # 準備存儲所有活動中颱風的圖表資料
+        
         for cyc in cyclones:
             name_en = cyc.get("TyphoonName", "未命名")
             name_zh = cyc.get("CwaTyphoonName", "")
@@ -364,6 +424,16 @@ try:
 
             if latest_fix:
                 dt_str = latest_fix.get("DateTime", "").replace("T", " ")
+
+                # ⬇️ 新增：將當前活躍颱風加入清單，供 update_typhoon_registry 使用
+                clean_eng = sanitize_eng_name(name_en)
+                active_typhoons.append({
+                    "cwa_no": cwa_ty_no if cwa_ty_no != "-" else cwa_td_no,
+                    "zh_name": name_zh if name_zh else clean_eng,
+                    "eng_name": clean_eng,
+                    "last_time": dt_str[:16]
+                })
+
                 panel_blocks.append(f"""
                 <div style="background-color: #fff9f5; border: 1px solid #ffccbc; border-radius: 6px; padding: 10px; margin-bottom: 10px;">
                     <b style="font-size: 14px; color: #d84315;">🌀 {title_name}</b> 
@@ -401,6 +471,25 @@ try:
 except Exception as e:
     print(f"讀取 CWA W-C0034-005 發生錯誤: {e}")
     cyclone_panel_html = f"<p style='color:red; padding:10px;'>無法解析熱帶氣旋資料: {e}</p>"
+# ⬇️ 新增：更新 typhoons_index.json 並動態產生「歷史紀錄」面板按鈕 HTML
+typhoon_registry = update_typhoon_registry(active_typhoons, current_time_str)
+history_buttons_list = []
+for eng_key, info in typhoon_registry.items():
+    is_active = info.get("status") == "active"
+    status_badge = (
+        '<span style="background:#d9534f; color:white; padding:1px 5px; border-radius:3px; font-size:10px; margin-left:6px;">活躍中</span>'
+        if is_active else
+        '<span style="background:#777; color:white; padding:1px 5px; border-radius:3px; font-size:10px; margin-left:6px;">歷史存檔</span>'
+    )
+    cwa_no_str = info.get("cwa_no", "")
+    cwa_badge = f" (編號: {cwa_no_str})" if cwa_no_str and cwa_no_str != "-" else ""
+    history_buttons_list.append(f"""
+            <button onclick="window.open('{info['filename']}', '_blank')" class="quick-btn" style="text-align: left; padding: 12px; font-size: 13px; border: 1px solid #ffccbc; background: #fff9f5; transition: 0.2s;">
+                <b style="color: #d84315;">🌀 {info['zh_name']} ({info['eng_name']}){cwa_badge}</b>{status_badge}<br>
+                <span style="font-size: 11px; color: #555; margin-top: 4px; display: inline-block;">最後更新: {info['last_updated']}</span>
+            </button>""")
+
+history_buttons_html = "\n".join(history_buttons_list) if history_buttons_list else "<p style='color:gray;'>尚無歷史颱風檔案</p>"
 
 # --- [圖層 3 & 4] CWA 警報與侵襲機率圖資 ---
 print("正在讀取 CWA 颱風警報與暴風圈 (W-C0034-002)...")
@@ -778,13 +867,10 @@ tab_panel_html = f"""
 
         <!-- 歷史存檔按鈕 -->
         <div style="background-color: #f9f9f9; padding: 10px; border-radius: 4px; border: 1px solid #ddd; margin-bottom: 8px;">
-            <b style="color: #337ab7; font-size: 14px;"><i class="fa fa-folder-open"></i> 靜態歷史檔案</b>
+            <b style="color: #337ab7; font-size: 14px;"><i class="fa fa-folder-open"></i> 颱風專屬頁面與歷史存檔</b>
         </div>
         <div style="display: flex; flex-direction: column; gap: 8px;">
-            <button onclick="window.open('typhoonvis_CHAMPI.html', '_blank')" class="quick-btn" style="text-align: left; padding: 12px; font-size: 13px; border: 1px solid #ffccbc; background: #fff9f5; transition: 0.2s;">
-                <b style="color: #d84315;">🌀 薔琵 (CHAMPI)</b><br>
-                <span style="font-size: 11px; color: #555; margin-top: 4px; display: inline-block;">紀錄時間: 2026-10-23</span>
-            </button>
+            {history_buttons_html}
         </div>
     </div>
 </div>
