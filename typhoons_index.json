@@ -1,0 +1,26 @@
+{
+  "UNKNOWN": {
+    "cwa_no": "35",
+    "zh_name": "",
+    "eng_name": "UNKNOWN",
+    "filename": "typhoonvis_UNKNOWN.html",
+    "last_updated": "2026-11-06 14:00",
+    "status": "active"
+  },
+  "IN-FA": {
+    "cwa_no": "30",
+    "zh_name": "煙花",
+    "eng_name": "IN-FA",
+    "filename": "typhoonvis_IN-FA.html",
+    "last_updated": "2026-11-05 14:00",
+    "status": "historical"
+  },
+  "CHAMPI": {
+    "cwa_no": "29",
+    "zh_name": "薔琵",
+    "eng_name": "CHAMPI",
+    "filename": "typhoonvis_CHAMPI.html",
+    "last_updated": "2026-10-23",
+    "status": "historical"
+  }
+}
