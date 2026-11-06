@@ -1,10 +1,11 @@
 {
-  "UNKNOWN": {
+  "TD-35": {
     "cwa_no": "35",
-    "zh_name": "",
-    "eng_name": "UNKNOWN",
-    "filename": "typhoonvis_UNKNOWN.html",
-    "last_updated": "2026-11-06 14:00",
+    "td_no": "35",
+    "zh_name": "熱帶性低氣壓",
+    "eng_name": "TD-35",
+    "filename": "typhoonvis_TD-35.html",
+    "last_updated": "2026-11-06 20:00",
     "status": "active"
   },
   "IN-FA": {
