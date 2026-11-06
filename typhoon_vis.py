@@ -5,7 +5,7 @@ import json
 import xml.etree.ElementTree as ET
 import zipfile
 import folium
-import shutil  # <--- 新增：用於自動複製備份各颱風專屬 HTML
+import shutil  # 用於自動複製與備份各颱風/熱帶性低氣壓專屬 HTML
 import requests
 import datetime
 import html
@@ -19,27 +19,46 @@ import dateutil.parser
 CWA_API_KEY = os.environ.get("CWA_API_KEY")
 INDEX_FILE = "typhoons_index.json"
 
-def sanitize_eng_name(eng_name):
-    """清理英文名稱，只保留英數字與連字號，例如 'IN-FA'"""
-    if not eng_name:
+
+def sanitize_eng_name(eng_name, cwa_td_no="-", cwa_ty_no="-"):
+    """
+    清理英文名稱，只保留英數字與連字號，例如 'IN-FA'。
+    若為尚未命名的熱帶性低氣壓 (無英文名或為 UNKNOWN)，
+    自動以熱帶氣旋編號命名 (如 'TD-35')，避免不同熱帶性低氣壓互相覆蓋。
+    """
+    cleaned = ""
+    if eng_name and str(eng_name).strip() not in ("未命名", "UNKNOWN", "-"):
+        cleaned = re.sub(r'[^A-Za-z0-9\-]', '', str(eng_name).upper())
+
+    if not cleaned or cleaned == "UNKNOWN":
+        if cwa_ty_no and str(cwa_ty_no).strip() not in ("", "-"):
+            safe_no = re.sub(r'[^A-Za-z0-9]', '', str(cwa_ty_no))
+            return f"TY-{safe_no}"
+        if cwa_td_no and str(cwa_td_no).strip() not in ("", "-"):
+            safe_no = re.sub(r'[^A-Za-z0-9]', '', str(cwa_td_no))
+            return f"TD-{safe_no}"
         return "UNKNOWN"
-    return re.sub(r'[^A-Za-z0-9\-]', '', eng_name.upper())
+    return cleaned
+
 
 def update_typhoon_registry(active_typhoons, current_time_str):
     """
-    active_typhoons 格式範例:
-    [
-        {"cwa_no": "30", "zh_name": "煙花", "eng_name": "IN-FA", "last_time": "2026-10-26 20:00"}
-    ]
+    管理 typhoons_index.json 生命週期：
+    1. 當熱帶性低氣壓生成時，自動建立索引與專屬分頁檔名 (如 typhoonvis_TD-35.html)。
+    2. 若該熱帶性低氣壓後續增強為颱風並獲得國際命名，自動將舊分頁更名並無縫銜接紀錄。
+    3. 活躍期間持續標記為 'active'；當颱風結束並從 API 消失後，自動改為 'historical' 停止更新。
     """
-    # 1. 讀取現有的索引檔（若無則初始化，並把既有的 CHAMPI 加入）
     if os.path.exists(INDEX_FILE):
-        with open(INDEX_FILE, "r", encoding="utf-8") as f:
-            registry = json.load(f)
+        try:
+            with open(INDEX_FILE, "r", encoding="utf-8") as f:
+                registry = json.load(f)
+        except Exception:
+            registry = {}
     else:
         registry = {
             "CHAMPI": {
                 "cwa_no": "29",
+                "td_no": "",
                 "zh_name": "薔琵",
                 "eng_name": "CHAMPI",
                 "filename": "typhoonvis_CHAMPI.html",
@@ -48,35 +67,99 @@ def update_typhoon_registry(active_typhoons, current_time_str):
             }
         }
 
-    # 2. 先將所有既有紀錄標記為歷史狀態 (historical)
+    # 將既有紀錄中的舊版 "UNKNOWN" 自動遷移為具體的 TD 編號 (如 TD-35)
+    if "UNKNOWN" in registry:
+        old_unk = registry.pop("UNKNOWN")
+        unk_no = str(old_unk.get("cwa_no", "")).strip()
+        new_key = f"TD-{unk_no}" if (unk_no and unk_no != "-") else "UNKNOWN"
+        new_fname = f"typhoonvis_{new_key}.html"
+        old_fname = old_unk.get("filename", "typhoonvis_UNKNOWN.html")
+        if os.path.exists(old_fname) and old_fname != new_fname and not os.path.exists(new_fname):
+            try:
+                shutil.move(old_fname, new_fname)
+            except Exception as e:
+                print(f"遷移舊檔案 {old_fname} 失敗: {e}")
+        old_unk["eng_name"] = new_key
+        old_unk["zh_name"] = old_unk.get("zh_name") or "熱帶性低氣壓"
+        old_unk["filename"] = new_fname
+        old_unk.setdefault("td_no", unk_no)
+        if new_key not in registry:
+            registry[new_key] = old_unk
+
+    # 先將所有既有紀錄標記為歷史狀態 (historical)
+    # 若氣旋已消散不在本次 active_typhoons 清單中，就會維持 historical 並停止覆寫 HTML
     for key in registry:
         registry[key]["status"] = "historical"
 
-    # 3. 更新或新增當前活躍的熱帶氣旋
+    # 更新或新增當前活躍的熱帶氣旋
     for ty in active_typhoons:
-        clean_eng = sanitize_eng_name(ty["eng_name"])
+        clean_eng = ty["eng_name"]
+        cwa_no = str(ty.get("cwa_no", "")).strip()
+        td_no = str(ty.get("td_no", "")).strip()
         filename = f"typhoonvis_{clean_eng}.html"
+
+        # 檢查是否為原本已存在的熱帶性低氣壓 (TD-XX) 升格並獲得正式英文命名
+        old_td_key = None
+        for k, v in list(registry.items()):
+            if k != clean_eng and k.startswith("TD-"):
+                if (td_no and td_no != "-" and (v.get("td_no") == td_no or v.get("cwa_no") == td_no)) or \
+                   (cwa_no and cwa_no != "-" and v.get("cwa_no") == cwa_no):
+                    old_td_key = k
+                    break
+
+        if old_td_key:
+            old_info = registry.pop(old_td_key)
+            old_file = old_info.get("filename", "")
+            if old_file and os.path.exists(old_file) and old_file != filename:
+                try:
+                    shutil.move(old_file, filename)
+                    print(f"🔄 熱帶性低氣壓升格為颱風，已將分頁 {old_file} 自動更名為 {filename}")
+                except Exception as e:
+                    print(f"更名分頁檔案失敗: {e}")
+
         registry[clean_eng] = {
-            "cwa_no": str(ty.get("cwa_no", "")),
+            "cwa_no": cwa_no,
+            "td_no": td_no,
             "zh_name": ty.get("zh_name", clean_eng),
             "eng_name": clean_eng,
             "filename": filename,
-            "last_updated": ty.get("last_time", current_time_str[:10]),
+            "last_updated": ty.get("last_time", current_time_str[:16]),
             "status": "active"
         }
 
-    # 4. 依最後更新時間由新到舊排序並存檔
+    # 排序：活躍中 (active) 優先排最上方，其次依最後更新時間由新到舊排序
     sorted_registry = dict(
-        sorted(registry.items(), key=lambda item: item[1]["last_updated"], reverse=True)
+        sorted(
+            registry.items(),
+            key=lambda item: (
+                0 if item[1].get("status") == "active" else 1,
+                item[1].get("last_updated", "")
+            ),
+            reverse=False
+        )
     )
+    # 針對同狀態內部按時間倒序排列
+    active_items = sorted(
+        [(k, v) for k, v in registry.items() if v.get("status") == "active"],
+        key=lambda item: item[1].get("last_updated", ""),
+        reverse=True
+    )
+    historical_items = sorted(
+        [(k, v) for k, v in registry.items() if v.get("status") != "active"],
+        key=lambda item: item[1].get("last_updated", ""),
+        reverse=True
+    )
+    sorted_registry = dict(active_items + historical_items)
+
     with open(INDEX_FILE, "w", encoding="utf-8") as f:
         json.dump(sorted_registry, f, ensure_ascii=False, indent=2)
 
     return sorted_registry
 
+
 # 取得現在的更新時間 (轉換為台灣時間 UTC+8)
 current_time_str = (datetime.datetime.utcnow() + datetime.timedelta(hours=8)).strftime("%Y-%m-%d %H:%M:%S")
-#初始化 README 內容
+# 初始化 README 內容
 readme_content = "## 網站：https://typhoonvis.netlify.app/\n\n"
 readme_content += f"### 🌀 最新熱帶氣旋動態 (更新時間：{current_time_str})\n\n"
 
@@ -89,7 +172,7 @@ m = folium.Map(
 )
 
 # 2. 建立圖層 (FeatureGroups)
-fg_county = folium.FeatureGroup(name="5. 縣市邊界與陸上警戒區", show=True) # <--- 新增這行
+fg_county = folium.FeatureGroup(name="5. 縣市邊界與陸上警戒區", show=True)
 fg_cwa_wsp = folium.FeatureGroup(name="4. CWA 暴風圈侵襲機率 (W-C0034-003)", show=False)
 fg_cwa_route = folium.FeatureGroup(name="3. CWA 警報與暴風圈 (W-C0034-002)", show=True)
 fg_cwa_005 = folium.FeatureGroup(name="2. CWA 熱帶氣旋分析預報 (W-C0034-005)", show=True)
@@ -272,8 +355,9 @@ def format_radius(circle_obj):
     if isinstance(circle_obj, dict):
         return f"{circle_obj.get('Radius', '未知')} 公里"
     return f"{circle_obj} 公里"
-active_typhoons = []  # <--- 新增：收集當前活躍颱風
-all_chart_data = {}  # 準備存儲所有活動中颱風的圖表資料
+
+active_typhoons = []  # 收集當前活躍颱風與熱帶性低氣壓
+all_chart_data = {}   # 準備存儲所有活動中氣旋的圖表資料
 try:
     res_005 = requests.get(cwa_005_url, timeout=15, verify=False)
     if res_005.status_code == 200:
@@ -292,9 +376,17 @@ try:
         for cyc in cyclones:
             name_en = cyc.get("TyphoonName", "未命名")
             name_zh = cyc.get("CwaTyphoonName", "")
-            title_name = f"{name_zh} ({name_en})" if name_zh else name_en
-            cwa_td_no = cyc.get("CwaTdNo", "-")
-            cwa_ty_no = cyc.get("CwaTyNo", "-")
+            cwa_td_no = str(cyc.get("CwaTdNo", "-")).strip()
+            cwa_ty_no = str(cyc.get("CwaTyNo", "-")).strip()
+            display_no = cwa_ty_no if (cwa_ty_no and cwa_ty_no != "-") else cwa_td_no
+            clean_eng = sanitize_eng_name(name_en, cwa_td_no, cwa_ty_no)
+
+            if name_zh:
+                title_name = f"{name_zh} ({clean_eng})"
+            elif clean_eng.startswith("TD-"):
+                title_name = f"熱帶性低氣壓 ({clean_eng})"
+            else:
+                title_name = clean_eng
 
             analysis_fixes = cyc.get("AnalysisData", {}).get("Fix", [])
             if isinstance(analysis_fixes, dict): analysis_fixes = [analysis_fixes]
@@ -302,7 +394,7 @@ try:
             history_pts = []
             latest_fix = None
 
-            #  建立圖表專用陣列
+            # 建立圖表專用陣列
             c_labels = []
             c_winds = []
             c_pressures = []
@@ -425,11 +517,11 @@ try:
             if latest_fix:
                 dt_str = latest_fix.get("DateTime", "").replace("T", " ")
 
-                # ⬇️ 新增：將當前活躍颱風加入清單，供 update_typhoon_registry 使用
-                clean_eng = sanitize_eng_name(name_en)
+                # 將當前活躍氣旋加入清單，供 update_typhoon_registry 自動建立/更新分頁使用
                 active_typhoons.append({
-                    "cwa_no": cwa_ty_no if cwa_ty_no != "-" else cwa_td_no,
-                    "zh_name": name_zh if name_zh else clean_eng,
+                    "cwa_no": display_no,
+                    "td_no": cwa_td_no,
+                    "zh_name": name_zh if name_zh else ("熱帶性低氣壓" if clean_eng.startswith("TD-") else clean_eng),
                     "eng_name": clean_eng,
                     "last_time": dt_str[:16]
                 })
@@ -437,7 +529,7 @@ try:
                 panel_blocks.append(f"""
                 <div style="background-color: #fff9f5; border: 1px solid #ffccbc; border-radius: 6px; padding: 10px; margin-bottom: 10px;">
                     <b style="font-size: 14px; color: #d84315;">🌀 {title_name}</b> 
-                    <span style="font-size:11px; background:#d84315; color:#fff; padding:1px 5px; border-radius:3px; margin-left:4px;">CWA 編號: {cwa_ty_no}</span>
+                    <span style="font-size:11px; background:#d84315; color:#fff; padding:1px 5px; border-radius:3px; margin-left:4px;">編號: {display_no}</span>
                     <hr style="margin: 6px 0; border: none; border-top: 1px dashed #ffab91;">
                     <div style="font-size: 12px; line-height: 1.6;">
                         <b>最新定位時間：</b>{dt_str}<br>
@@ -451,8 +543,8 @@ try:
                     </div>
                 </div>
                 """)
-                #將該颱風資訊轉為 Markdown 格式寫入 README
-                readme_content += f"#### {title_name} (CWA 編號: {cwa_ty_no})\n"
+                # 將該颱風資訊轉為 Markdown 格式寫入 README
+                readme_content += f"#### {title_name} (編號: {display_no})\n"
                 readme_content += f"- **最新定位時間**：{dt_str}\n"
                 readme_content += f"- **中心位置**：北緯 {latest_fix.get('CoordinateLatitude')}°, 東經 {latest_fix.get('CoordinateLongitude')}°\n"
                 readme_content += f"- **中心氣壓**：{latest_fix.get('Pressure')} hPa\n"
@@ -466,12 +558,13 @@ try:
             cyclone_panel_html = "".join(panel_blocks)
         else:
             cyclone_panel_html = "<p style='color:gray; padding:10px;'>目前西北太平洋及南海無活動中的熱帶氣旋紀錄。</p>"
-            #無颱風時的 README 顯示
+            # 無颱風時的 README 顯示
             readme_content += "> 目前西北太平洋及南海無活動中的熱帶氣旋紀錄。\n\n"
 except Exception as e:
     print(f"讀取 CWA W-C0034-005 發生錯誤: {e}")
     cyclone_panel_html = f"<p style='color:red; padding:10px;'>無法解析熱帶氣旋資料: {e}</p>"
-# ⬇️ 新增：更新 typhoons_index.json 並動態產生「歷史紀錄」面板按鈕 HTML
+
+# 更新 typhoons_index.json 並動態產生「歷史紀錄」面板按鈕 HTML
 typhoon_registry = update_typhoon_registry(active_typhoons, current_time_str)
 history_buttons_list = []
 for eng_key, info in typhoon_registry.items():
@@ -483,9 +576,13 @@ for eng_key, info in typhoon_registry.items():
     )
     cwa_no_str = info.get("cwa_no", "")
     cwa_badge = f" (編號: {cwa_no_str})" if cwa_no_str and cwa_no_str != "-" else ""
+    zh_label = info.get("zh_name", "")
+    eng_label = info.get("eng_name", eng_key)
+    display_title = f"{zh_label} ({eng_label})" if (zh_label and zh_label != eng_label) else eng_label
+
     history_buttons_list.append(f"""
             <button onclick="window.open('{info['filename']}', '_blank')" class="quick-btn" style="text-align: left; padding: 12px; font-size: 13px; border: 1px solid #ffccbc; background: #fff9f5; transition: 0.2s;">
-                <b style="color: #d84315;">🌀 {info['zh_name']} ({info['eng_name']}){cwa_badge}</b>{status_badge}<br>
+                <b style="color: #d84315;">🌀 {display_title}{cwa_badge}</b>{status_badge}<br>
                 <span style="font-size: 11px; color: #555; margin-top: 4px; display: inline-block;">最後更新: {info['last_updated']}</span>
             </button>""")
 
@@ -525,6 +622,7 @@ def get_cwa_product_xml(api_url):
     except Exception as e:
         print(f"取得 CWA Product XML 失敗 ({api_url}): {e}")
         return None
+
 # --- 輔助函式：美化表格的 CSS ---
 TABLE_CSS = """
 <style>
@@ -674,7 +772,7 @@ jma_html = fetch_jma_info()
 # --- CWA 警報文字解析 ---
 cwa_001_url = f"https://opendata.cwa.gov.tw/api/v1/rest/datastore/W-C0034-001?Authorization={CWA_API_KEY}"
 alert_html = ""
-alert_areas_list = [] # <--- 新增：用來儲存警戒縣市名單，供地圖動態塗色使用
+alert_areas_list = [] # 用來儲存警戒縣市名單，供地圖動態塗色使用
 
 try:
     res = requests.get(cwa_001_url, timeout=15)
@@ -685,7 +783,7 @@ try:
             latest = info_list[0]
             headline_text = latest.get('headline', '颱風警報')
             
-            # 新增邏輯：判斷若標題包含「解除」，則強制清空警戒區域清單
+            # 判斷若標題包含「解除」，則強制清空警戒區域清單
             if "解除" in headline_text:
                 areas = []
                 alert_areas_list = []
@@ -700,7 +798,6 @@ try:
                 value = sec.get('value', '')
                 if title and value:
                     desc_text += f"<b style='color:#337ab7;'>[{title}]</b> {value}<br><br>"
-            # 判斷是否解除，給予不同顏色
             # 判斷是否解除，給予不同顏色
             theme_color = "#5cb85c" if "解除" in headline_text else "#d9534f"
             alert_html = f"""
@@ -719,7 +816,6 @@ if not alert_html:
     """
 
 # --- 介面面板 (RWD 優化) ---
-import json
 chart_data_json_str = json.dumps(all_chart_data) if 'all_chart_data' in locals() else "{}"
 
 tab_panel_html = f"""
@@ -869,14 +965,14 @@ tab_panel_html = f"""
         <div style="background-color: #f9f9f9; padding: 10px; border-radius: 4px; border: 1px solid #ddd; margin-bottom: 8px;">
             <b style="color: #337ab7; font-size: 14px;"><i class="fa fa-folder-open"></i> 颱風專屬頁面與歷史存檔</b>
         </div>
-        <div style="display: flex; flex-direction: column; gap: 8px;">
+        <div id="history-buttons-container" style="display: flex; flex-direction: column; gap: 8px;">
             {history_buttons_html}
         </div>
     </div>
 </div>
       
 <script>
-// ⬅️ [新增] 接收 Python 動態產生的所有颱風歷史資料 JSON
+// 接收 Python 動態產生的所有颱風歷史資料 JSON
 const allChartData = {chart_data_json_str};
 let trendChart = null;
 
@@ -941,6 +1037,37 @@ function renderChart() {{
     }});
 }}
 
+// 自動從 typhoons_index.json 同步最新分頁清單 (讓已封存的歷史分頁也能顯示最新生成的颱風連結)
+async function syncHistoryButtons() {{
+    const container = document.getElementById('history-buttons-container');
+    if (!container) return;
+    try {{
+        const res = await fetch('typhoons_index.json?t=' + Date.now());
+        if (!res.ok) return;
+        const registry = await res.json();
+        const entries = Object.values(registry);
+        if (entries.length === 0) return;
+
+        container.innerHTML = entries.map(info => {{
+            const isActive = info.status === 'active';
+            const badge = isActive
+                ? '<span style="background:#d9534f; color:white; padding:1px 5px; border-radius:3px; font-size:10px; margin-left:6px;">活躍中</span>'
+                : '<span style="background:#777; color:white; padding:1px 5px; border-radius:3px; font-size:10px; margin-left:6px;">歷史存檔</span>';
+            const cwaNo = (info.cwa_no && info.cwa_no !== '-') ? ` (編號: ${{info.cwa_no}})` : '';
+            const zhName = info.zh_name || '';
+            const engName = info.eng_name || '';
+            const titleText = (zhName && zhName !== engName) ? `${{zhName}} (${{engName}})` : engName;
+            return `
+            <button onclick="window.open('${{info.filename}}', '_blank')" class="quick-btn" style="text-align: left; padding: 12px; font-size: 13px; border: 1px solid #ffccbc; background: #fff9f5; transition: 0.2s;">
+                <b style="color: #d84315;">🌀 ${{titleText}}${{cwaNo}}</b>${{badge}}<br>
+                <span style="font-size: 11px; color: #555; margin-top: 4px; display: inline-block;">最後更新: ${{info.last_updated || ''}}</span>
+            </button>`;
+        }}).join('');
+    }} catch (err) {{
+        // 離線或本地開啟時保留 Python 預渲染的靜態按鈕
+    }}
+}}
+
 function switchTab(tabId) {{
     const tabIds = ['tab-chat', 'tab-cyclone', 'tab-alert', 'tab-jma', 'tab-wind', 'tab-history']; 
     tabIds.forEach(function(id) {{
@@ -951,9 +1078,10 @@ function switchTab(tabId) {{
             if (active) {{
                 panel.style.display = (id === 'tab-chat' || id === 'tab-wind' || id === 'tab-history') ? 'flex' : 'block';
                 
-                // 切換到歷史頁籤時觸發圖表繪製
+                // 切換到歷史頁籤時觸發圖表繪製與清單同步
                 if (id === 'tab-history') {{
-                    setTimeout(renderChart, 100); 
+                    setTimeout(renderChart, 100);
+                    syncHistoryButtons();
                 }}
             }} else {{
                 panel.style.display = 'none';
@@ -1016,6 +1144,7 @@ legend_html = """
   <i class="fa fa-square" style="color:purple; opacity:0.5;"></i> CWA 侵襲機率區
 </div>
 """
+
 # --- [圖層 5] 縣市邊界與警戒區動態塗色 ---
 county_geojson_path = "twcounty2010.5.json"
 
@@ -1087,11 +1216,30 @@ folium.LayerControl(position="topright", collapsed=False).add_to(m)
 output_file = "index.html"
 m.save(output_file)
 print(f"地圖已成功更新，已加入 RWD 手機版響應式排版支援：{output_file}")
-# 自動產生 Netlify 重新導向設定檔 (_redirects)
-redirects_content = "/typhoonvis_champi    /typhoonvis_CHAMPI.html    200\n"
+
+# --- [關鍵新增] 自動建立與同步更新當前「活躍中」的熱帶性低氣壓/颱風專屬分頁 ---
+# 已結束 (status == "historical") 的颱風不會進入此複製迴圈，因此會自動停止更新並完整封存最後狀態
+for eng_key, info in typhoon_registry.items():
+    if info.get("status") == "active":
+        target_filename = info.get("filename")
+        if target_filename:
+            shutil.copyfile(output_file, target_filename)
+            print(f"✅ 已自動建立/同步更新活躍氣旋專屬分頁：{target_filename}")
+
+# --- 自動產生 Netlify 重新導向設定檔 (_redirects) ---
+redirect_lines = []
+for eng_key, info in typhoon_registry.items():
+    fname = info.get("filename", "")
+    if fname:
+        short_path = "/" + fname.replace(".html", "").lower()
+        redirect_lines.append(f"{short_path}    /{fname}    200")
+# 找不到特定分頁時自動導回首頁，避免出現 Netlify 404 錯誤頁
+redirect_lines.append("/typhoonvis_*.html    /index.html    302")
+
 with open("_redirects", "w", encoding="utf-8") as f:
-    f.write(redirects_content)
+    f.write("\n".join(redirect_lines) + "\n")
 print("已成功產生 Netlify 導向設定檔：_redirects")
+
 # 輸出 README.md 檔案
 with open("README.md", "w", encoding="utf-8") as f:
     f.write(readme_content)
