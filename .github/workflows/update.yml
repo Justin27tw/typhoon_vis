@@ -28,11 +28,19 @@ jobs:
           CWA_API_KEY: ${{ secrets.CWA_API_KEY }}
         run: python typhoon_vis.py
 
-      - name: Commit and Push changes
+      - name: Commit and Push updated typhoon pages
         run: |
-          git config --global user.name "github-actions[bot]"
-          git config --global user.email "github-actions[bot]@users.noreply.github.com"
-          git add index.html README.md _redirects typhoons_index.json typhoonvis_*.html
-          git commit -m "Auto update typhoon map, archives & README" || exit 0
-          git pull --rebase --autostash
-          git push
+          git config --local user.email "action@github.com"
+          git config --local user.name "GitHub Action"
+          
+          # 【關鍵修改】把首頁、所有動態分頁、歷史索引、轉址設定全部加入 Git 追蹤
+          git add index.html typhoonvis_*.html *.json README.md _redirects || true
+          
+          # 若有任何資料或分頁更新，自動 Commit 並 Push 觸發 Netlify 部署
+          if ! git diff --staged --quiet; then
+            git commit -m "Auto update typhoon map and active cyclone pages"
+            git pull --rebase origin main
+            git push origin main
+          else
+            echo "目前無新數據變動，略過推送。"
+          fi
