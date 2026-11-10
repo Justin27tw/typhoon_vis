@@ -1,11 +1,11 @@
 {
-  "TD-35": {
-    "cwa_no": "35",
+  "CEMPAKA": {
+    "cwa_no": "31",
     "td_no": "35",
-    "zh_name": "熱帶性低氣壓",
-    "eng_name": "TD-35",
-    "filename": "typhoonvis_TD-35.html",
-    "last_updated": "2026-11-07 08:00",
+    "zh_name": "查帕卡",
+    "eng_name": "CEMPAKA",
+    "filename": "typhoonvis_CEMPAKA.html",
+    "last_updated": "2026-11-10 08:00",
     "status": "active"
   },
   "IN-FA": {
