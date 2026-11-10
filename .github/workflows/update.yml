@@ -1,15 +1,20 @@
-name: Auto Update Typhoon Map
+name: Update Typhoon Map
 
 on:
   schedule:
-    - cron: '*/30 * * * *'  # 每 30 分鐘排程執行一次
-  workflow_dispatch:       # 允許手動點擊執行
+    - cron: '0 * * * *'
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: write
 
 jobs:
   update-map:
     runs-on: ubuntu-latest
-    permissions:
-      contents: write
+
     steps:
       - name: Checkout Code
         uses: actions/checkout@v4
@@ -20,8 +25,7 @@ jobs:
           python-version: '3.10'
 
       - name: Install dependencies
-        run: |
-          pip install -r requirements.txt
+        run: pip install -r requirements.txt
 
       - name: Run Python script
         env:
@@ -29,18 +33,14 @@ jobs:
         run: python typhoon_vis.py
 
       - name: Commit and Push updated typhoon pages
-         run: |
-           git config --local user.email "action@github.com"
-           git config --local user.name "GitHub Action"
-
-           # 使用 git add -A，確保新增、修改、以及「因升格而更名/刪除的舊分頁」都能被 Git 完整追蹤
-           git add -A
-
-           # 若有任何資料或分頁更新，自動 Commit 並 Push 觸發 Netlify 部署
-           if ! git diff --staged --quiet; then
-             git commit -m "Auto update typhoon map and active cyclone pages"
-             git pull --rebase --autostash origin main
-             git push origin main
-           else
-             echo "目前無新數據變動，略過推送。"
-           fi
+        run: |
+          git config --local user.email "action@github.com"
+          git config --local user.name "GitHub Action"
+          git add -A
+          if ! git diff --staged --quiet; then
+            git commit -m "Auto update typhoon map and active cyclone pages"
+            git pull --rebase --autostash origin main
+            git push origin main
+          else
+            echo "目前無新數據變動，略過推送。"
+          fi
